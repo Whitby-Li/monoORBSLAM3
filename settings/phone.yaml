@@ -1,0 +1,79 @@
+%YAML:1.0
+---
+# Camera
+Camera:
+  Width: 1920
+  Height: 1080
+  fps: 30
+
+  CameraMatrix: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: f
+    data: [ 880.3842060257779, 0.000000e+00, 939.1481015502462,
+            0.000000e+00, 880.4146163267155, 542.5638884246227,
+            0.000000e+00, 0.000000e+00, 1.000000e+00 ]
+
+  Distortion: !!opencv-matrix
+    rows: 1
+    cols: 4
+    dt: f
+    data: [ -0.04727872906456901, 0.04543545853401388, 0.0009606739301976519, -0.0008318890478998227 ]
+
+  Distortion_Model: radtan
+
+# ORB
+ORB:
+  Features: 4000
+  ScaleFactor: 1.2
+  Levels: 8
+  IniThFAST: 20
+  MinThFAST: 7
+
+# IMU
+IMU:
+  NoiseGyro: 1.2723357543462119e-03
+  WalkGyro: 5.0633873233890736e-05
+  NoiseAcc: 1.2480085822876706e-02
+  WalkAcc: 7.4792055669881021e-04
+
+  Frequency: 400
+
+  GyroBias: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: f
+    data: [ -2.07752154e-06, 3.17379321e-05, 4.49020489e-06 ]
+
+  AccBias: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: f
+    data: [ -0.06177602, 0.00086568, 0.00013382 ]
+
+  Rbc: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: f
+    data: [ 0.005560297945577966, -0.9999639770283634, -0.006413090703850012,
+            -0.9998891120617873, -0.005648250819648627, 0.01377900007145867,
+            -0.01381472645575441, 0.00633576422365484, -0.9998844990420921 ]
+
+  tbc: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: f
+    data: [ 0.04680557888837452, -0.003064218420416064, -0.02327739312277717 ]
+
+# View
+View:
+  KeyFrameSize: 0.6
+  KeyFrameLineWidth: 2
+  GraphLineWidth: 1
+  PointSize: 2
+  CameraSize: 0.7
+  CameraLineWidth: 3
+  ViewPointX: 0
+  ViewPointY: -100
+  ViewPointZ: -0.1
+  ViewPointF: 2000

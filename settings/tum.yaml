@@ -1,0 +1,78 @@
+%YAML:1.0
+---
+
+# Camera
+Camera:
+  Width: 512
+  Height: 512
+  fps: 20
+
+  CameraMatrix: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: f
+    data: [ 190.978477, 0, 254.931706, 0, 190.973307, 256.897442, 0, 0, 1.0 ]
+
+  Distortion: !!opencv-matrix
+    rows: 4
+    cols: 1
+    dt: f
+    data: [ 0.003482389402, 0.000715034845, -0.002053236141, 0.000202936736 ]
+
+  Distortion_Model: equidistant
+
+# ORB
+ORB:
+  Features: 3000
+  ScaleFactor: 1.2
+  Levels: 8
+  IniThFAST: 20
+  MinThFAST: 7
+
+# IMU
+IMU:
+  NoiseGyro: 5.817764e-06
+  WalkGyro: 9.696273e-07
+  NoiseAcc: 8.333333e-06
+  WalkAcc: 1.96e-05
+
+  Frequency: 100
+
+  GyroBias: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: f
+    data: [ 0, 0, 0 ]
+
+  AccBias: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: f
+    data: [ 0, 0, 0 ]
+
+  Rbc: !!opencv-matrix
+    rows: 3
+    cols: 3
+    dt: f
+    data: [ 0.007812974043, -0.004279137589, 0.9999603629,
+            -0.9998595715, -0.01486804709, 0.007748560049,
+            0.01483429782, -0.9998802543, -0.004394739866 ]
+
+  tbc: !!opencv-matrix
+    rows: 3
+    cols: 1
+    dt: f
+    data: [ 1.143898845, -0.312718451, 0.7265462279 ]
+
+# View
+View:
+  KeyFrameSize: 0.6
+  KeyFrameLineWidth: 2
+  GraphLineWidth: 1
+  PointSize: 2
+  CameraSize: 0.7
+  CameraLineWidth: 3
+  ViewPointX: 0
+  ViewPointY: -100
+  ViewPointZ: -0.1
+  ViewPointF: 2000
