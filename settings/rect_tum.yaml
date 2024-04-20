@@ -1,28 +1,29 @@
 %YAML:1.0
 ---
+
 # Camera
 Camera:
-  Width: 1392
-  Height: 512
-  fps: 10
+  Width: 640
+  Height: 640
+  fps: 20
 
   CameraMatrix: !!opencv-matrix
     rows: 3
     cols: 3
     dt: f
-    data: [ 9.786977e+02, 0, 6.900000e+02, 0, 9.717435e+02, 2.497222e+02, 0, 0, 1.0 ]
+    data: [ 150, 0, 320, 0, 150, 320, 0, 0, 1.0 ]
 
   Distortion: !!opencv-matrix
-    rows: 5
+    rows: 4
     cols: 1
     dt: f
-    data: [ -3.792567e-01, 2.121203e-01, 9.182571e-04, 1.911304e-03, -7.605535e-02 ]
+    data: [ 0, 0, 0, 0 ]
 
-  DistortionModel: radtan
+  Distortion_Model: equidistant
 
 # ORB
 ORB:
-  Features: 3000
+  Features: 1500
   ScaleFactor: 1.2
   Levels: 8
   IniThFAST: 20

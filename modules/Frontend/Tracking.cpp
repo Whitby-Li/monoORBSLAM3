@@ -16,16 +16,13 @@ using namespace std;
 namespace mono_orb_slam3 {
 
     Tracking::Tracking(const cv::FileNode &orbNode, Map *pointMap, System *system_ptr)
-            : point_map(pointMap), system(system_ptr) {
+            : point_map(pointMap), system(system_ptr), camera_ptr(Camera::getCamera()) {
         // create ORB extractor
         int nFeatures = orbNode["Features"];
         extractor = new ORBExtractor(nFeatures, orbNode["ScaleFactor"], orbNode["Levels"], orbNode["IniThFAST"],
                                      orbNode["MinThFAST"]);
         initial_extractor = new ORBExtractor(2 * nFeatures, *extractor);
         extractor->print();
-
-        // create two_view_reconstructor
-        initial_reconstructor = new TwoViewReconstruction(Camera::getCamera()->K);
     }
 
     void Tracking::setLocalMapper(LocalMapping *localMapper) {
@@ -596,6 +593,8 @@ namespace mono_orb_slam3 {
     void Tracking::Initialization() {
         initial_logger.recordIter();
 
+        initial_logger << "extractor " << current_frame->num_kps << " orb features\n";
+
         if (current_frame->num_kps > 500) {
             if (last_frame == nullptr) {
                 initial_logger << "set first frame (id " << current_frame->id << ")\n";
@@ -621,7 +620,7 @@ namespace mono_orb_slam3 {
                 Eigen::Matrix3f R21;
                 Eigen::Vector3f t21;
                 vector<bool> vbTriangulated;
-                if (initial_reconstructor->Reconstruct(last_frame->key_points, current_frame->key_points,
+                if (camera_ptr->reconstructWithTwoViews(last_frame->key_points, current_frame->key_points,
                                                        initial_matches, R21, t21, initial_3d_points, vbTriangulated)) {
                     for (size_t i = 0, end = initial_matches.size(); i < end; ++i) {
                         if (initial_matches[i] >= 0 && !vbTriangulated[i]) {

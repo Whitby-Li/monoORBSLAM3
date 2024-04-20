@@ -630,8 +630,8 @@ namespace mono_orb_slam3 {
             const cv::KeyPoint &kp1 = key_points1[match_pairs[i].first];
             const cv::KeyPoint &kp2 = key_points2[match_pairs[i].second];
 
-            Eigen::Vector3f Pc1, p1(kp1.pt.x, kp1.pt.y, 1), p2(kp2.pt.x, kp2.pt.y, 1);
-            Triangulate(p1, p2, P1, P2, Pc1);
+            Eigen::Vector3f Pc1;
+            Triangulate({kp1.pt.x, kp1.pt.y, 1}, {kp2.pt.x, kp2.pt.y, 1}, P1, P2, Pc1);
 
             if (!isfinite(Pc1(0)) || !isfinite(Pc1(1)) || !isfinite(Pc1(2))) {
                 vbGood[match_pairs[i].first] = false;
@@ -686,13 +686,14 @@ namespace mono_orb_slam3 {
         return nGood;
     }
 
-    bool TwoViewReconstruction::Triangulate(Eigen::Vector3f &p1, Eigen::Vector3f &p2, Eigen::Matrix<float, 3, 4> &P1,
-                                            Eigen::Matrix<float, 3, 4> &P2, Eigen::Vector3f &P) {
+    bool TwoViewReconstruction::Triangulate(const Eigen::Vector3f &x1, const Eigen::Vector3f &x2,
+                                            const Eigen::Matrix<float, 3, 4> &P1,
+                                            const Eigen::Matrix<float, 3, 4> &P2, Eigen::Vector3f &P) {
         Eigen::Matrix4f A;
-        A.block<1, 4>(0, 0) = p1(0) * P1.block<1, 4>(2, 0) - P1.block<1, 4>(0, 0);
-        A.block<1, 4>(1, 0) = p1(1) * P1.block<1, 4>(2, 0) - P1.block<1, 4>(1, 0);
-        A.block<1, 4>(2, 0) = p2(0) * P2.block<1, 4>(2, 0) - P2.block<1, 4>(0, 0);
-        A.block<1, 4>(3, 0) = p2(1) * P2.block<1, 4>(2, 0) - P2.block<1, 4>(1, 0);
+        A.block<1, 4>(0, 0) = x1[0] * P1.block<1, 4>(2, 0) - P1.block<1, 4>(0, 0);
+        A.block<1, 4>(1, 0) = x1[1] * P1.block<1, 4>(2, 0) - P1.block<1, 4>(1, 0);
+        A.block<1, 4>(2, 0) = x2[0] * P2.block<1, 4>(2, 0) - P2.block<1, 4>(0, 0);
+        A.block<1, 4>(3, 0) = x2[1] * P2.block<1, 4>(2, 0) - P2.block<1, 4>(1, 0);
 
         Eigen::JacobiSVD<Eigen::Matrix4f> svd(A, Eigen::ComputeFullV);
         Eigen::Vector4f Ph = svd.matrixV().col(3);

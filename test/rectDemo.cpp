@@ -1,5 +1,5 @@
 //
-// Created by whitby on 2/25/24.
+// Created by whitby on 4/14/24.
 //
 
 #include "System.h"
@@ -11,19 +11,16 @@
 using namespace std;
 using namespace mono_orb_slam3;
 
-int main(int argc, char *argv[]) {
-    if (argc < 4) {
-        cout << "Usage: ./euroc_demo setting.yaml vocabulary_file data_folder trajectory_save_path velo_bias_save_path" << endl;
+int main(int argc, char **argv) {
+    if (argc != 5) {
+        cerr << "Usage: " << argv[0] << " <setting yaml> <vocabulary file> <data folder> <trajectory save path>" << endl;
         return -1;
     }
 
-    // 1. create SLAM system
-    System SLAM(argv[1], argv[2], false);
-
-    // 2. load data
+    // 1. load data
     const string dataFolder = argv[3];
     vector<double> timestamps;
-    loadCameraData(dataFolder + "/cam0/times.txt", timestamps);
+    loadCameraData(dataFolder + "/rect_cam0/times.txt", timestamps);
     int num_camera = (int) timestamps.size();
     cout << "load " << num_camera << " camera data" << endl;
 
@@ -32,12 +29,15 @@ int main(int argc, char *argv[]) {
     int num_imu = (int) vecImu.size();
     cout << "load " << num_imu << " imu data" << endl;
 
+    // 2. create SLAM system
+    System SLAM(argv[1], argv[2], true);
+
     // 3. main loop
     int idx1 = 0, idx2 = 0;
     while (vecImu[idx2].t < timestamps[idx1]) idx2++;
     while (idx1 < num_camera && idx2 < num_imu) {
         cout << endl << "iter: " << idx1 << endl;
-        cv::Mat img = cv::imread(dataFolder + cv::format("/cam0/data/%08d.png", idx1), cv::IMREAD_GRAYSCALE);
+        cv::Mat img = cv::imread(dataFolder + cv::format("/rect_cam0/data/%08d.png", idx1), cv::IMREAD_GRAYSCALE);
         if (img.empty()) {
             cout << "fail to load image" << endl;
             break;
@@ -73,7 +73,6 @@ int main(int argc, char *argv[]) {
 
     SLAM.ShutDown();
     SLAM.saveKeyFrameTrajectory(argv[4]);
-    SLAM.saveKeyFrameVelocityAndBias(argv[5]);
 
     return 0;
 }

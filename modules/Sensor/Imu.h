@@ -45,11 +45,11 @@ namespace mono_orb_slam3 {
     /// Imu calibration (Tbc, Tcb, noise, bias_walk
     class ImuCalib {
     private:
-        ImuCalib(Eigen::Matrix3f Rbc, Eigen::Vector3f tbc, const Eigen::DiagonalMatrix<float, 6> &covNoise,
-                 const Eigen::DiagonalMatrix<float, 6> &covWalk, const Bias &bias)
-                : T_bc(std::move(Rbc), std::move(tbc)), cov_noise(covNoise), cov_walk(covWalk),
-                  initial_bias(bias) {
-            T_cb = T_bc.inverse();
+        ImuCalib(Eigen::Matrix3f Rcb, Eigen::Vector3f tcb, const Eigen::DiagonalMatrix<float, 6> &covNoise,
+                 const Eigen::DiagonalMatrix<float, 6> &covWalk, Bias bias)
+                : T_cb(std::move(Rcb), std::move(tcb)), cov_noise(covNoise), cov_walk(covWalk),
+                  initial_bias(std::move(bias)) {
+            T_bc = T_cb.inverse();
             R_cb = T_cb.R.cast<double>(), R_bc = T_bc.R.cast<double>();
             t_cb = T_cb.t.cast<double>(), t_bc = T_bc.t.cast<double>();
         }

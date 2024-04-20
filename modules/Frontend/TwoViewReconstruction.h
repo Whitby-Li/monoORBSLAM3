@@ -26,8 +26,8 @@ namespace mono_orb_slam3 {
                          const std::vector<int> &matches12, Eigen::Matrix3f &R21, Eigen::Vector3f &t21,
                          std::vector<cv::Point3f> &points3D, std::vector<bool> &vecBeTriangulated);
 
-        static bool Triangulate(Eigen::Vector3f &p1, Eigen::Vector3f &p2, Eigen::Matrix<float, 3, 4> &P1,
-                                Eigen::Matrix<float, 3, 4> &P2, Eigen::Vector3f &P);
+        static bool Triangulate(const Eigen::Vector3f &x1, const Eigen::Vector3f &x2, const Eigen::Matrix<float, 3, 4> &P1,
+                                const Eigen::Matrix<float, 3, 4> &P2, Eigen::Vector3f &P);
 
     private:
         // Have 200 eight-point pairs, compute homography matrix and score it iteratively, retain the best

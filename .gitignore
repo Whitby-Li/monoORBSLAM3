@@ -1,0 +1,9 @@
+/build
+/lib
+/logs
+/results
+/test/bin
+/thirdParty/*/build
+/thirdParty/*/lib
+/vocabulary
+/.idea

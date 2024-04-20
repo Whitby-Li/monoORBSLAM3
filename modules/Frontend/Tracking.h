@@ -6,7 +6,7 @@
 #define MONO_ORB_SLAM3_TRACKING_H
 
 #include "System.h"
-#include "TwoViewReconstruction.h"
+#include "Sensor/Camera.h"
 #include "LocalMapping.h"
 #include "BasicObject/KeyFrame.h"
 #include "View/Viewer.h"
@@ -30,7 +30,6 @@ namespace mono_orb_slam3 {
         ~Tracking() {
             delete initial_extractor;
             delete extractor;
-            delete initial_reconstructor;
         }
 
         void setLocalMapper(LocalMapping *localMapper);
@@ -57,7 +56,6 @@ namespace mono_orb_slam3 {
         /* Initialization */
         std::vector<cv::Point2f> priori_matches;
         std::vector<int> initial_matches;
-        TwoViewReconstruction *initial_reconstructor;
         std::vector<cv::Point3f> initial_3d_points;
 
         int num_inlier = 0;
@@ -91,6 +89,9 @@ namespace mono_orb_slam3 {
         bool needNewKeyFrame();
 
         void createNewKeyFrame();
+
+        /* Camera */
+        const Camera *camera_ptr;
 
         /* ORB */
         ORBExtractor *initial_extractor, *extractor;

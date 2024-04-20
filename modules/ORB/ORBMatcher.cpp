@@ -423,12 +423,11 @@ namespace mono_orb_slam3 {
         // compute epipolar point in first image
         const Pose T1w = keyFrame1->getPose();
         const Pose T2w = keyFrame2->getPose();
-        const Camera *camera_ptr = Camera::getCamera();
-        const Eigen::Matrix3f K = camera_ptr->K;
+        // const Camera *camera_ptr = Camera::getCamera();
 
         const Eigen::Matrix3f R12 = T1w.R * T2w.R.transpose();
         const Eigen::Vector3f t12 = T1w.t - R12 * T2w.t;
-        const Eigen::Matrix3f F12 = K.transpose().inverse() * lie::Hatf(t12) * R12 * K.inverse();
+        // const Eigen::Matrix3f E12 = lie::Hatf(t12) * R12;
 
         // find matches between not tracked key-points
         // matching speed-up by ORB vocabulary, compare only ORB that share the same node
@@ -456,11 +455,11 @@ namespace mono_orb_slam3 {
                     const cv::Mat &desc1 = keyFrame1->descriptors.row(idx1);
 
                     // epipolar line in second image l = x1^T F12
-                    const float a = kp1.pt.x * F12(0, 0) + kp1.pt.y * F12(1, 0) + F12(2, 0);
+                    /*const float a = kp1.pt.x * F12(0, 0) + kp1.pt.y * F12(1, 0) + F12(2, 0);
                     const float b = kp1.pt.x * F12(0, 1) + kp1.pt.y * F12(1, 1) + F12(2, 1);
                     const float c = kp1.pt.x * F12(0, 2) + kp1.pt.y * F12(1, 2) + F12(2, 2);
                     const float den = a * a + b * b;
-                    if (den == 0) continue;
+                    if (den == 0) continue;*/
 
                     int bestDist = TH_LOW, bestIdx2 = -1;
                     for (auto idx2: iter2->second) {
@@ -470,13 +469,16 @@ namespace mono_orb_slam3 {
                         const cv::Mat &desc2 = keyFrame2->descriptors.row(idx2);
                         const int dist = DescriptorDistance(desc1, desc2);
 
-                        if (dist > bestDist) continue;
-
-                        const float num = a * kp2.pt.x + b * kp2.pt.y + c;
-                        if (num * num / den < 3.841 * kp2.size * kp2.size) {
+                        if (dist < bestDist) {
                             bestIdx2 = idx2;
                             bestDist = dist;
                         }
+
+                        /*const float num = a * kp2.pt.x + b * kp2.pt.y + c;
+                        if (num * num / den < 3.841 * kp2.size * kp2.size) {
+                            bestIdx2 = idx2;
+                            bestDist = dist;
+                        }*/
                     }
 
                     if (bestIdx2 > 0) {

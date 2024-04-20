@@ -148,7 +148,6 @@ namespace mono_orb_slam3 {
         vector<shared_ptr<KeyFrame>> bestCovisibleKFs = current_kf->getBestCovisibleKFs(20);
         ORBMatcher matcher(0.6, false);
         const Camera *camera_ptr = Camera::getCamera();
-        const Eigen::Matrix3f K = camera_ptr->K;
         const Pose T2w = current_kf->getPose();
         const Eigen::Vector3f O2 = current_kf->getCameraCenter();
         const vector<float> squareSigmas = ORBExtractor::getSquareSigmas();
@@ -171,7 +170,6 @@ namespace mono_orb_slam3 {
             Eigen::Matrix<float, 3, 4> P1, P2;
             P1.block<3, 3>(0, 0) = T1w.R, P1.block<3, 1>(0, 3) = T1w.t;
             P2.block<3, 3>(0, 0) = T2w.R, P2.block<3, 1>(0, 3) = T2w.t;
-            P1 = K * P1, P2 = K * P2;
 
             int numGood = 0;
 
@@ -180,10 +178,10 @@ namespace mono_orb_slam3 {
                 if (matches12[i] == -1) continue;
                 const cv::KeyPoint &kp1 = kf->key_points[i];
                 const cv::KeyPoint &kp2 = current_kf->key_points[matches12[i]];
-                Eigen::Vector3f p1(kp1.pt.x, kp1.pt.y, 1);
-                Eigen::Vector3f p2(kp2.pt.x, kp2.pt.y, 1);
+                Eigen::Vector3f x1 = camera_ptr->backProject(kp1.pt);
+                Eigen::Vector3f x2 = camera_ptr->backProject(kp2.pt);
                 Eigen::Vector3f Pw;
-                if (TwoViewReconstruction::Triangulate(p1, p2, P1, P2, Pw)) {
+                if (TwoViewReconstruction::Triangulate(x1, x2, P1, P2, Pw)) {
                     if (!isfinite(Pw[0]) || !isfinite(Pw[1]) || !isfinite(Pw[2])) {
                         illegalPoint++;
                         continue;
@@ -209,9 +207,9 @@ namespace mono_orb_slam3 {
                         negativePoint++;
                         continue;
                     }
-                    Pc1 = Pc1 / Pc1[2];
-                    Eigen::Vector3f project_p1 = K * Pc1;
-                    const float squareError1 = (p1 - project_p1).squaredNorm();
+                    cv::Point2f project_p1 = camera_ptr->project(Pc1);
+                    const float squareError1 = (project_p1.x - kp1.pt.x) * (project_p1.x - kp1.pt.x) +
+                                               (project_p1.y - kp1.pt.y) * (project_p1.y - kp1.pt.y);
                     const float levelSquareSigma1 = squareSigmas[kp1.octave];
                     if (squareError1 > levelSquareSigma1 * 5.991) {
                         errorPoint++;
@@ -224,9 +222,9 @@ namespace mono_orb_slam3 {
                         negativePoint++;
                         continue;
                     }
-                    Pc2 = Pc2 / Pc2[2];
-                    Eigen::Vector3f project_p2 = K * Pc2;
-                    const float squareError2 = (p2 - project_p2).squaredNorm();
+                    cv::Point2f project_p2 = camera_ptr->project(Pc2);
+                    const float squareError2 = (project_p2.x - kp2.pt.x) * (project_p2.x - kp2.pt.x) +
+                                               (project_p2.y - kp2.pt.y) * (project_p2.y - kp2.pt.y);
                     const float levelSquareSigma2 = squareSigmas[kp2.octave];
                     if (squareError2 > levelSquareSigma2 * 5.991) {
                         errorPoint++;

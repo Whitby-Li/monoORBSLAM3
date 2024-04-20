@@ -36,6 +36,8 @@ add_library(mono_orb_slam3 SHARED
         modules/Utils/Converter.cpp
         modules/Utils/LieAlgeBra.cpp
         modules/Sensor/Camera.cpp
+        modules/Sensor/Pinhole.cpp
+        modules/Sensor/Fisheye.cpp
         modules/Sensor/Imu.cpp
         modules/ORB/ORBExtractor.cpp
         modules/ORB/ORBMatcher.cpp
@@ -79,3 +81,5 @@ add_executable(euroc_demo test/eurocDemo.cpp)
 add_executable(kitti_demo test/kittiDemo.cpp)
 add_executable(phone_demo test/phoneDemo.cpp)
 add_executable(ntu_demo test/ntuDemo.cpp)
+add_executable(rect_demo test/rectDemo.cpp)
+add_executable(demo test/demo.cpp)

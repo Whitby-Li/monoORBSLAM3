@@ -24,7 +24,6 @@ namespace mono_orb_slam3 {
     typedef Eigen::Matrix<double, 3, 1> Vector3d;
     typedef Eigen::Matrix<double, 6, 1> Vector6d;
     typedef Eigen::Matrix<double, 9, 1> Vector9d;
-    typedef Eigen::Matrix<double, 12, 1> Vector12d;
 
     /// camera and imu pose, update imu pose directly
     class CameraImuPose {

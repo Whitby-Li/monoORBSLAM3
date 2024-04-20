@@ -1,5 +1,5 @@
 //
-// Created by whitby on 2/25/24.
+// Created by whitby on 4/20/24.
 //
 
 #include "System.h"
@@ -13,14 +13,12 @@ using namespace mono_orb_slam3;
 
 int main(int argc, char *argv[]) {
     if (argc < 4) {
-        cout << "Usage: ./euroc_demo setting.yaml vocabulary_file data_folder trajectory_save_path velo_bias_save_path" << endl;
-        return -1;
+        cout << "Usage: " << argv[0]
+             << " <setting yaml> <vocabulary file> <dataset folder> <trajectory save path(txt)> [<velo and bias save path(txt)>] [<map save path(pcd)>]";
+        return 1;
     }
 
-    // 1. create SLAM system
-    System SLAM(argv[1], argv[2], false);
-
-    // 2. load data
+    // 1. load data
     const string dataFolder = argv[3];
     vector<double> timestamps;
     loadCameraData(dataFolder + "/cam0/times.txt", timestamps);
@@ -31,6 +29,9 @@ int main(int argc, char *argv[]) {
     loadImuData(dataFolder + "/imu.txt", vecImu);
     int num_imu = (int) vecImu.size();
     cout << "load " << num_imu << " imu data" << endl;
+
+    // 2. create SLAM system
+    System SLAM(argv[1], argv[2], true);
 
     // 3. main loop
     int idx1 = 0, idx2 = 0;
@@ -71,9 +72,14 @@ int main(int argc, char *argv[]) {
         idx1++;
     }
 
+    // 4. shutdown SLAM system, and save trajectory and others
     SLAM.ShutDown();
     SLAM.saveKeyFrameTrajectory(argv[4]);
-    SLAM.saveKeyFrameVelocityAndBias(argv[5]);
+
+    if (argc > 5)
+        SLAM.saveKeyFrameVelocityAndBias(argv[5]);
+    if (argc > 6)
+        SLAM.savePointCloudMap(argv[6]);
 
     return 0;
 }

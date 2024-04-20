@@ -17,16 +17,16 @@ namespace mono_orb_slam3 {
         if (imu_calib_ptr == nullptr) {
             float noiseGyro, noiseAcc;
             float walkGyro, walkAcc;
-            cv::Mat mat_Rbc, mat_tbc, mat_gyro_bias, mat_acc_bias;
+            cv::Mat mat_Rcb, mat_tcb, mat_gyro_bias, mat_acc_bias;
             imuNode["NoiseGyro"] >> noiseGyro, imuNode["NoiseAcc"] >> noiseAcc;
             imuNode["WalkGyro"] >> walkGyro, imuNode["WalkAcc"] >> walkAcc;
-            imuNode["Rbc"] >> mat_Rbc, imuNode["tbc"] >> mat_tbc;
+            imuNode["Rcb"] >> mat_Rcb, imuNode["tcb"] >> mat_tcb;
             imuNode["GyroBias"] >> mat_gyro_bias, imuNode["AccBias"] >> mat_acc_bias;
 
-            Eigen::Matrix3f Rcb;
-            Eigen::Vector3f tbc;
-            memcpy(Rcb.data(), mat_Rbc.data, sizeof(float) * 3 * 3);
-            memcpy(tbc.data(), mat_tbc.data, sizeof(float) * 3);
+            Eigen::Matrix3f Rbc;
+            Eigen::Vector3f tcb;
+            memcpy(Rbc.data(), mat_Rcb.data, sizeof(float) * 3 * 3);
+            memcpy(tcb.data(), mat_tcb.data, sizeof(float) * 3);
 
             Eigen::DiagonalMatrix<float, 6> covNoise;
             covNoise.diagonal() << noiseGyro * noiseGyro, noiseGyro * noiseGyro, noiseGyro * noiseGyro,
@@ -39,7 +39,7 @@ namespace mono_orb_slam3 {
             Bias initialBias({mat_gyro_bias.at<float>(0), mat_gyro_bias.at<float>(1), mat_gyro_bias.at<float>(2)},
                              {mat_acc_bias.at<float>(0), mat_acc_bias.at<float>(1), mat_acc_bias.at<float>(2)});
 
-            imu_calib_ptr = new ImuCalib(Rcb.transpose(), tbc, covNoise, covWalk, initialBias);
+            imu_calib_ptr = new ImuCalib(Rbc.transpose(), tcb, covNoise, covWalk, initialBias);
             return true;
         } else {
             cerr << "imu_calib_ptr not null" << endl;
