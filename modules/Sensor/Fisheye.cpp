@@ -47,30 +47,7 @@ namespace mono_orb_slam3 {
     Eigen::Vector3f Fisheye::backProject(const cv::Point2f &p) const {
         // use newthon method to solve for theta with good precision
         float x = (p.x - cx) * inv_fx, y = (p.y - cy) * inv_fy;
-        float scale = 1.f;
-        float theta_d = sqrtf(x * x + y * y);
-        theta_d = ::fminf(theta_d, CV_PI / 2);
-
-        if (theta_d > 1e-8) {
-            // compensate distortion iteratively
-            float theta = theta_d;
-
-            for (int j = 0; j < 10; j++) {
-                float theta2 = theta * theta, theta4 = theta2 * theta2, theta6 = theta4 * theta2, theta8 =
-                        theta4 * theta4;
-                float k0_theta2 = dist_coeffs.at<float>(0, 0) * theta2;
-                float k1_theta4 = dist_coeffs.at<float>(1, 0) * theta4;
-                float k2_theta6 = dist_coeffs.at<float>(2, 0) * theta6;
-                float k3_theta8 = dist_coeffs.at<float>(3, 0) * theta8;
-                float theta_fix = (theta * (1 + k0_theta2 + k1_theta4 + k2_theta6 + k3_theta8) - theta_d) /
-                                  (1 + 3 * k0_theta2 + 5 * k1_theta4 + 7 * k2_theta6 + 9 * k3_theta8);
-                theta = theta - theta_fix;
-                if (fabsf(theta_fix) < 1e-6)
-                    break;
-            }
-            scale = std::tan(theta) / theta_d;
-        }
-
+        float scale = scale_mat.at<float>(p.y, p.x);
         return {x * scale, y * scale, 1};
     }
 
@@ -109,6 +86,10 @@ namespace mono_orb_slam3 {
         return JacGood;
     }
 
+    float Fisheye::uncertainty(const cv::Point2f &p) const {
+        return scale_mat.at<float>(p.y, p.x);
+    }
+
     void Fisheye::undistortKeyPoints(const std::vector<cv::KeyPoint> &keyPoints,
                                      std::vector<cv::KeyPoint> &keyPointsUn) const {
         keyPointsUn = keyPoints;
@@ -134,6 +115,34 @@ namespace mono_orb_slam3 {
         for (size_t i = 0; i < num_kp2; ++i) unKeyPoints2[i].pt = points2[i];
 
         return reconstructor->Reconstruct(unKeyPoints1, unKeyPoints2, matches12, R21, t21, points3D, vecBeTriangulated);
+    }
+
+    float Fisheye::computeScale(const cv::Point2i &p) {
+        float x = (p.x - cx) * inv_fx, y = (p.y - cy) * inv_fy;
+        float scale = 1.f;
+        float theta_d = sqrtf(x * x + y * y);
+        theta_d = fminf(theta_d, CV_PI / 2);
+
+        if (theta_d > 1e-8) {
+            // compensate distortion iteratively
+            float theta = theta_d;
+
+            for (int j = 0; j < 10; j++) {
+                float theta2 = theta * theta, theta4 = theta2 * theta2, theta6 = theta4 * theta2, theta8 =
+                        theta4 * theta4;
+                float k0_theta2 = k1 * theta2;
+                float k1_theta4 = k2 * theta4;
+                float k2_theta6 = k3 * theta6;
+                float k3_theta8 = k4 * theta8;
+                float theta_fix = (theta * (1 + k0_theta2 + k1_theta4 + k2_theta6 + k3_theta8) - theta_d) /
+                                  (1 + 3 * k0_theta2 + 5 * k1_theta4 + 7 * k2_theta6 + 9 * k3_theta8);
+                theta = theta - theta_fix;
+                if (fabsf(theta_fix) < 1e-6)
+                    break;
+            }
+            scale = std::tan(theta) / theta_d;
+        }
+        return scale;
     }
 
 } // mono_orb_slam3

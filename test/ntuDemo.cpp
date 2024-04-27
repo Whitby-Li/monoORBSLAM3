@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 1. create SLAM system
-    System SLAM(argv[1], argv[2], false);
+    System SLAM(argv[1], argv[2], true);
 
     // 2. load data
     const string dataFolder = argv[3];

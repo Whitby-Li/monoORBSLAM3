@@ -20,6 +20,11 @@ namespace mono_orb_slam3 {
         (*orb_extractor)(img, raw_key_points, descriptors);
         num_kps = (int) raw_key_points.size();
         const Camera *camera_ptr = Camera::getCamera();
+
+        for (auto &kp : raw_key_points) {
+            kp.size *= camera_ptr->uncertainty(kp.pt);
+        }
+
         camera_ptr->undistortKeyPoints(raw_key_points, key_points);
 
         map_points = vector<shared_ptr<MapPoint>>(num_kps, nullptr);

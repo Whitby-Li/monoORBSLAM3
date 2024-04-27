@@ -63,6 +63,9 @@ namespace mono_orb_slam3 {
         // get camera projection jacobian (2 x 3 matrix)
         virtual Eigen::Matrix<double, 2, 3> getProjJacobian(const Eigen::Vector3d &Pc) const = 0;
 
+        // get distort uncertainty
+        virtual float uncertainty(const cv::Point2f &p) const = 0;
+
         // undistort key-points
         virtual void undistortKeyPoints(const std::vector<cv::KeyPoint> &keyPoints,
                                         std::vector<cv::KeyPoint> &keyPointsUn) const = 0;

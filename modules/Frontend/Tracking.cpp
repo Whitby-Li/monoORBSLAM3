@@ -353,7 +353,7 @@ namespace mono_orb_slam3 {
         // search local map-points
         searchLocalPoints();
 
-        if (local_mapper->finishImuInit() && num_inlier > 160)
+        if (local_mapper->finishImuInit())
             num_inlier = Optimize::poseFullOptimize(last_kf, current_frame);
         else {
             num_inlier = Optimize::poseOptimize(current_frame);

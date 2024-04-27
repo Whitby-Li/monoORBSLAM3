@@ -383,7 +383,7 @@ namespace mono_orb_slam3 {
                 auto *eVisual = new EdgeMono(kp.pt);
                 eVisual->setVertex(0, vPoint);
                 eVisual->setVertex(1, optimizer.vertex(kf->id));
-                eVisual->setInformation(Eigen::Matrix2d::Identity() * ORBExtractor::getInvSquareSigma(kp.octave));
+                eVisual->setInformation(Eigen::Matrix2d::Identity() * (1.f / kp.size / kp.size));
 
                 auto *rk = new g2o::RobustKernelHuber;
                 eVisual->setRobustKernel(rk);
@@ -476,7 +476,7 @@ namespace mono_orb_slam3 {
                     auto *eVisual = new EdgeSE3Project3DOnlyPose(mp->getPos());
                     eVisual->setVertex(0, vPose);
                     eVisual->setMeasurement({kp.pt.x, kp.pt.y});
-                    const float invSigma2 = ORBExtractor::getInvSquareSigma(kp.octave);
+                    const float invSigma2 = (1.f / kp.size / kp.size);
                     eVisual->setInformation(invSigma2 * Eigen::Matrix2d::Identity());
 
                     auto *rk = new g2o::RobustKernelHuber;
@@ -694,7 +694,7 @@ namespace mono_orb_slam3 {
                     eVisual->setVertex(0, vPose2);
                     eVisual->setMeasurement({kp.pt.x, kp.pt.y});
 
-                    const float invSigma2 = ORBExtractor::getInvSquareSigma(kp.octave);
+                    const float invSigma2 = (1.f / kp.size / kp.size);
                     eVisual->setInformation(Eigen::Matrix2d::Identity() * invSigma2);
 
                     auto *rk = new g2o::RobustKernelHuber;
@@ -713,7 +713,7 @@ namespace mono_orb_slam3 {
         const int iters[4] = {10, 10, 10, 10};
         vector<bool> vecBeInlier(numCorrespondences, true);
 
-        for (auto iter : iters) {
+        for (auto iter: iters) {
             vPose2->setEstimate(initialPose);
 
             optimizer.initializeOptimization(0);
@@ -874,7 +874,7 @@ namespace mono_orb_slam3 {
                 eVisual->setVertex(0, vPoint);
                 eVisual->setVertex(1, optimizer.vertex(kf->id));
                 eVisual->setMeasurement({kp.pt.x, kp.pt.y});
-                const float invSigma2 = ORBExtractor::getInvSquareSigma(kp.octave);
+                const float invSigma2 = (1.f / kp.size / kp.size);
                 eVisual->setInformation(invSigma2 * Eigen::Matrix2d::Identity());
 
                 auto *rk = new g2o::RobustKernelHuber;
@@ -967,7 +967,7 @@ namespace mono_orb_slam3 {
         vector<shared_ptr<KeyFrame>> optimizeKeyFrames = pointMap->getRecentKeyFrames(numOpt);
 
         mapper_logger << "Initial Pose\n";
-        for (const auto &kf : optimizeKeyFrames) {
+        for (const auto &kf: optimizeKeyFrames) {
             mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
             mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
             mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
@@ -1053,7 +1053,7 @@ namespace mono_orb_slam3 {
         }
 
         mapper_logger << "After inertial optimize\n";
-        for (const auto &kf : optimizeKeyFrames) {
+        for (const auto &kf: optimizeKeyFrames) {
             mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
             mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
             mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
@@ -1062,7 +1062,7 @@ namespace mono_orb_slam3 {
     }
 
     void Optimize::localFullBundleAdjustment(const std::shared_ptr<KeyFrame> &keyFrame, Map *pointMap, bool beLarge,
-                                                 bool *stopFlag) {
+                                             bool *stopFlag) {
         // 1. get optimizable keyframes, fixed keyframes and map-points
         int maxOpt = 10, iterations = 10;
         if (beLarge) {
@@ -1230,7 +1230,7 @@ namespace mono_orb_slam3 {
                 auto *eVisual = new EdgeMono(kp.pt);
                 eVisual->setVertex(0, vPoint);
                 eVisual->setVertex(1, optimizer.vertex(kf->id));
-                const float invSigma2 = ORBExtractor::getInvSquareSigma(kp.octave);
+                const float invSigma2 = (1.f / kp.size / kp.size);
                 eVisual->setInformation(invSigma2 * Eigen::Matrix2d::Identity());
 
                 auto *rk = new g2o::RobustKernelHuber;

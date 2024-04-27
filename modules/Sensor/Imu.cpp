@@ -20,8 +20,16 @@ namespace mono_orb_slam3 {
             cv::Mat mat_Rcb, mat_tcb, mat_gyro_bias, mat_acc_bias;
             imuNode["NoiseGyro"] >> noiseGyro, imuNode["NoiseAcc"] >> noiseAcc;
             imuNode["WalkGyro"] >> walkGyro, imuNode["WalkAcc"] >> walkAcc;
-            imuNode["Rcb"] >> mat_Rcb, imuNode["tcb"] >> mat_tcb;
             imuNode["GyroBias"] >> mat_gyro_bias, imuNode["AccBias"] >> mat_acc_bias;
+
+            if (imuNode["Rcb"].empty()) {
+                cv::Mat mat_Rbc, mat_tbc;
+                imuNode["Rbc"] >> mat_Rbc, imuNode["tbc"] >> mat_tbc;
+                mat_Rcb = mat_Rbc.t();
+                mat_tcb = -mat_Rcb * mat_tbc;
+            } else {
+                imuNode["Rcb"] >> mat_Rcb, imuNode["tcb"] >> mat_tcb;
+            }
 
             Eigen::Matrix3f Rbc;
             Eigen::Vector3f tcb;

@@ -52,6 +52,10 @@ namespace mono_orb_slam3 {
         return projectJacobian;
     }
 
+    float Pinhole::uncertainty(const cv::Point2f &p) const {
+        return 1.f;
+    }
+
     void Pinhole::undistortKeyPoints(const std::vector<cv::KeyPoint> &keyPoints,
                                      std::vector<cv::KeyPoint> &keyPointsUn) const {
         keyPointsUn = keyPoints;

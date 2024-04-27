@@ -23,6 +23,8 @@ namespace mono_orb_slam3 {
 
         Eigen::Matrix<double, 2, 3> getProjJacobian(const Eigen::Vector3d &Pc) const override;
 
+        float uncertainty(const cv::Point2f &p) const override;
+
         void undistortKeyPoints(const std::vector<cv::KeyPoint> &keyPoints,
                                 std::vector<cv::KeyPoint> &keyPointsUn) const;
 

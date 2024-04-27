@@ -18,7 +18,7 @@ Camera:
     dt: f
     data: [ -0.288105327549552, 0.074578284234601, 7.784489598138802e-04, -2.277853975035461e-04 ]
 
-  Distortion_Model: radtan
+  DistortionModel: radtan
 
 # ORB
 ORB:

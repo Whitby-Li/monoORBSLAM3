@@ -144,8 +144,10 @@ namespace mono_orb_slam3 {
     }
 
     void LocalMapping::createNewMapPoints() {
-        mapper_logger << "createNewMapPoints: triangulate with 20 best covisible keyframes with current_KF\n";
-        vector<shared_ptr<KeyFrame>> bestCovisibleKFs = current_kf->getBestCovisibleKFs(20);
+        mapper_logger << "createNewMapPoints: triangulate with 20 recent keyframes\n";
+        vector<shared_ptr<KeyFrame>> recentKFs = point_map->getRecentKeyFrames(21);
+        recentKFs.pop_back();
+
         ORBMatcher matcher(0.6, false);
         const Camera *camera_ptr = Camera::getCamera();
         const Pose T2w = current_kf->getPose();
@@ -153,7 +155,7 @@ namespace mono_orb_slam3 {
         const vector<float> squareSigmas = ORBExtractor::getSquareSigmas();
         const float ratioFactor = 1.5f * ORBExtractor::getScaleFactor(1);
 
-        for (auto &kf: bestCovisibleKFs) {
+        for (auto &kf: recentKFs) {
             const Pose T1w = kf->getPose();
             const Eigen::Vector3f O1 = kf->getCameraCenter();
 
@@ -319,11 +321,16 @@ namespace mono_orb_slam3 {
 
         // check redundant keyframes (only local keyframes)
         // a keyframe is considered redundant if it's 90% map-points are seen in at least other 3 keyframes (in the same or finer scale)
-        vector<shared_ptr<KeyFrame>> localKeyFrames = current_kf->getConnectedKFs();
+        vector<shared_ptr<KeyFrame>> recentKeyFrames = point_map->getRecentKeyFrames(25);
+        size_t numKF = recentKeyFrames.size();
 
-        for (const auto &kf: localKeyFrames) {
-            if (kf->id == 0) continue;
+        size_t last_kf_idx = 0;
+        for (size_t idx = 1; idx < numKF - 1; ++idx) {
+            if (recentKeyFrames[idx]->id == 0 ||
+                recentKeyFrames[idx + 1]->timestamp - recentKeyFrames[last_kf_idx]->timestamp > 1.5)
+                continue;
 
+            auto &kf = recentKeyFrames[idx];
             const vector<shared_ptr<MapPoint>> mapPoints = kf->getMapPoints();
             const int thObs = 3;
             int numRedundantObs = 0;
@@ -358,6 +365,8 @@ namespace mono_orb_slam3 {
                 kf->setBad();
                 mapper_logger << titles[0] << "keyframe (id " << kf->id << ") has set bad\n";
                 mapper_logger.flush();
+            } else {
+                last_kf_idx = idx;
             }
         }
     }
