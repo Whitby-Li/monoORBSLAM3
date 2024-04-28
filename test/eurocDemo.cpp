@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 1. create SLAM system
-    System SLAM(argv[1], argv[2], true);
+    System SLAM(argv[1], argv[2], false);
 
     // 2. load data
     const string dataFolder = argv[3];
@@ -65,7 +65,8 @@ int main(int argc, char *argv[]) {
         }
 
         if (t_track < t) {
-            usleep((t - t_track) * 1e6);
+            int sleep_mics = cvFloor((t - t_track) * 1e6);
+            this_thread::sleep_for(chrono::microseconds(sleep_mics));
         }
 
         idx1++;

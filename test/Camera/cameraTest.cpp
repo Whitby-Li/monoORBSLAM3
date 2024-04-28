@@ -10,7 +10,7 @@ using namespace std;
 using namespace mono_orb_slam3;
 
 int main() {
-    const string yamlFile = "settings/tum.yaml";
+    const string yamlFile = "/home/whitby/Development/CLionProjects/slam/mono_orb_slam3/settings/tum.yaml";
     cv::FileStorage fs(yamlFile, cv::FileStorage::READ);
     if (!fs.isOpened()) {
         cerr << "fail to open file at " << yamlFile << endl;

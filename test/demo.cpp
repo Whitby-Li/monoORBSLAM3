@@ -7,6 +7,8 @@
 
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 using namespace std;
 using namespace mono_orb_slam3;
@@ -66,7 +68,8 @@ int main(int argc, char *argv[]) {
         }
 
         if (t_track < t) {
-            usleep((t - t_track) * 1e6);
+            int sleep_mics = cvFloor((t - t_track) * 1e6);
+            this_thread::sleep_for(chrono::microseconds(sleep_mics));
         }
 
         idx1++;

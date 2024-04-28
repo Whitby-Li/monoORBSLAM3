@@ -4,12 +4,33 @@
 
 #include "Fisheye.h"
 
-#include <utility>
+#include <iostream>
 #include <opencv2/calib3d/calib3d.hpp>
 
 using namespace std;
 
 namespace mono_orb_slam3 {
+
+    Fisheye::Fisheye(int w, int h, int fps, cv::Mat matK, cv::Mat distCoeffs, DistortModel distModel)
+        : Camera(w, h, fps, std::move(matK), std::move(distCoeffs), distModel) {
+        k1 = dist_coeffs.at<float>(0, 0);
+        k2 = dist_coeffs.at<float>(1, 0);
+        k3 = dist_coeffs.at<float>(2, 0);
+        k4 = dist_coeffs.at<float>(3, 0);
+
+        scale_mat = cv::Mat(height, width, CV_32F);
+        float maxScale = 0, minScale = 100;
+        for (int u = 0; u < width; ++u) {
+            for (int v = 0; v < height; ++v) {
+                float scale = computeScale({u, v});
+                scale_mat.at<float>(v, u) = scale;
+                maxScale = fmaxf(scale, maxScale);
+                minScale = fminf(scale, minScale);
+            }
+        }
+
+        cout << "scale range: [" << minScale << ", " << maxScale << "]" << endl;
+    }
 
     Eigen::Vector2d Fisheye::project(const Eigen::Vector3d &Pc) const {
         double a = Pc[0] / Pc[2], b = Pc[1] / Pc[2];
@@ -121,9 +142,12 @@ namespace mono_orb_slam3 {
         float x = (p.x - cx) * inv_fx, y = (p.y - cy) * inv_fy;
         float scale = 1.f;
         float theta_d = sqrtf(x * x + y * y);
-        theta_d = fminf(theta_d, CV_PI / 2);
+        float th = CV_PI * 0.45;
+        theta_d = fminf(theta_d, th);
 
-        if (theta_d > 1e-8) {
+        if (theta_d < 0) cout << "error" << endl;
+
+        if (theta_d > 1e-3) {
             // compensate distortion iteratively
             float theta = theta_d;
 
@@ -136,10 +160,12 @@ namespace mono_orb_slam3 {
                 float k3_theta8 = k4 * theta8;
                 float theta_fix = (theta * (1 + k0_theta2 + k1_theta4 + k2_theta6 + k3_theta8) - theta_d) /
                                   (1 + 3 * k0_theta2 + 5 * k1_theta4 + 7 * k2_theta6 + 9 * k3_theta8);
+
                 theta = theta - theta_fix;
                 if (fabsf(theta_fix) < 1e-6)
                     break;
             }
+
             scale = std::tan(theta) / theta_d;
         }
         return scale;

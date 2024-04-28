@@ -310,8 +310,6 @@ namespace mono_orb_slam3 {
             return false;
         }
 
-        if (local_mapper->isImuInitialized()) Optimize::poseInertialOptimize(last_kf, current_frame);
-
         return true;
     }
 
@@ -340,7 +338,6 @@ namespace mono_orb_slam3 {
             cerr << "trackLastKeyFrame: not enough inlier matches" << endl;
             return false;
         }
-        if (local_mapper->isImuInitialized()) Optimize::poseInertialOptimize(last_kf, current_frame);
 
         return true;
     }

@@ -11,20 +11,7 @@ namespace mono_orb_slam3 {
 
     class Fisheye : public Camera {
     public:
-        Fisheye(int w, int h, int fps, cv::Mat matK, cv::Mat distCoeffs, DistortModel distModel)
-                : Camera(w, h, fps, std::move(matK), std::move(distCoeffs), distModel) {
-            k1 = dist_coeffs.at<float>(0, 0);
-            k2 = dist_coeffs.at<float>(1, 0);
-            k3 = dist_coeffs.at<float>(2, 0);
-            k4 = dist_coeffs.at<float>(3, 0);
-
-            scale_mat = cv::Mat(height, width, CV_32F);
-            for (int u = 0; u < width; ++u) {
-                for (int v = 0; v < height; ++v) {
-                    scale_mat.at<float>(v, u) = computeScale({u, v});
-                }
-            }
-        }
+        Fisheye(int w, int h, int fps, cv::Mat matK, cv::Mat distCoeffs, DistortModel distModel);
 
         Eigen::Vector2d project(const Eigen::Vector3d &Pc) const override;
 

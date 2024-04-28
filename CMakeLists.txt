@@ -67,7 +67,7 @@ add_executable(extractor_test test/ORB/extractorTest.cpp)
 add_executable(initialize_search_test test/ORB/initializeSearchTest.cpp)
 
 # Camera
-add_executable(img_bound_test test/Camera/imageBoundTest.cpp)
+add_executable(camera_test test/Camera/cameraTest.cpp)
 
 # Imu
 add_executable(imu_test test/Imu/imuTest.cpp)

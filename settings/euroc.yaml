@@ -22,7 +22,7 @@ Camera:
 
 # ORB
 ORB:
-  Features: 1000
+  Features: 1500
   ScaleFactor: 1.2
   Levels: 8
   IniThFAST: 20
