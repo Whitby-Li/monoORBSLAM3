@@ -27,7 +27,12 @@ namespace mono_orb_slam3 {
         be_finished = false;
         be_stopped = false;
 
-        pangolin::CreateWindowAndBind("mono-orb-slam3: map viewer", 1220, 1046);
+        pangolin::CreateWindowAndBind("mono-orb-slam3: map viewer", 1000, 500);
+        pangolin::GlRenderBuffer renderBuffer(1000, 500);
+        pangolin::GlTexture texture(1000, 500);
+        pangolin::GlFramebuffer frameBuffer(texture, renderBuffer);
+
+        cv::VideoWriter video("output.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 20, {1220, 1046});
 
         // 3D mouse handler requires depth testing to be enabled
         glEnable(GL_DEPTH_TEST);
@@ -36,24 +41,34 @@ namespace mono_orb_slam3 {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        pangolin::CreatePanel("menu").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(174));
+        /*pangolin::CreatePanel("menu").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(174));
         pangolin::Var<bool> menuFollowCamera("menu.Follow Camera", true, true);
         pangolin::Var<bool> menuShowPoints("menu.Show Points", true, true);
         pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames", true, true);
         pangolin::Var<bool> menuShowGraph("menu.Show Graph", true, true);
-        pangolin::Var<bool> menuReset("menu.Reset", false, false);
+        pangolin::Var<bool> menuReset("menu.Reset", false, false);*/
 
         // define camera render object (for view / scene browsing)
-        pangolin::OpenGlRenderState s_cam(
-                pangolin::ProjectionMatrix(1046, 1046, view_point_f, view_point_f, 523,
-                                           523, 0.05, 5000),
-                pangolin::ModelViewLookAt(view_point_x, view_point_y, view_point_z, 0, 0, 0, 0, -1, 0)
+        pangolin::OpenGlRenderState s_cam1(
+                pangolin::ProjectionMatrix(500, 500, 0.4 * view_point_f, 0.4 * view_point_f, 250,
+                                           250, 0.05, 5000),
+                pangolin::ModelViewLookAt(0, view_point_y, 0, 0, 0, 0, pangolin::AxisZ)
+        );
+
+        pangolin::OpenGlRenderState s_cam2(
+                pangolin::ProjectionMatrix(500, 500, view_point_f, view_point_f, 250, 250, 0.05, 2000),
+                pangolin::ModelViewLookAt(view_point_x, view_point_y, view_point_z, 0, 0, 0, pangolin::AxisNegY)
         );
 
         // add named OpenGL viewport to window and provide 3D handler
-        pangolin::View &d_cam = pangolin::CreateDisplay()
-                .SetBounds(0.0, 1.0, pangolin::Attach::Pix(174), 1.0, -1046.f / 1046.f)
-                .SetHandler(new pangolin::Handler3D(s_cam));
+        pangolin::View &d_cam1 = pangolin::Display("cam1").SetAspect(1.f);
+        pangolin::View &d_cam2 = pangolin::Display("cam2").SetAspect(1.f);
+
+        auto &container = pangolin::Display("multi")
+            .SetBounds(0.0, 1.0, 0.0, 1.0)
+            .SetLayout(pangolin::LayoutEqual)
+            .AddDisplay(d_cam1)
+            .AddDisplay(d_cam2);
 
         pangolin::OpenGlMatrix Twc;
         Twc.SetIdentity();
@@ -65,9 +80,13 @@ namespace mono_orb_slam3 {
 
         while (true) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            // frameBuffer.Bind();
+
             map_drawer->getCurrentOpenGLCameraMatrix(Twc);
 
-            if (menuFollowCamera && beFollow) {
+            s_cam1.Follow(Twc);
+            s_cam2.Follow(Twc);
+            /*if (menuFollowCamera && beFollow) {
                 s_cam.Follow(Twc);
             } else if (menuFollowCamera && !beFollow) {
                 s_cam.SetModelViewMatrix(
@@ -76,25 +95,32 @@ namespace mono_orb_slam3 {
                 beFollow = true;
             } else if (!menuFollowCamera && beFollow) {
                 beFollow = false;
-            }
-
-            d_cam.Activate(s_cam);
+            }*/
             glClearColor(1.f, 1.f, 1.f, 1.f);
+            d_cam1.Activate(s_cam1);
             map_drawer->DrawCurrentCamera(Twc);
-            if (menuShowKeyFrames || menuShowGraph) {
-                map_drawer->DrawKeyFrames(menuShowKeyFrames, menuShowGraph);
-            }
-            if (menuShowPoints) {
-                map_drawer->DrawMapPoints();
-            }
+            map_drawer->DrawKeyFrames(true, true);
+
+            d_cam2.Activate(s_cam2);
+            map_drawer->DrawCurrentCamera(Twc);
+            map_drawer->DrawKeyFrames(true, true);
+            map_drawer->DrawMapPoints();
 
             pangolin::FinishFrame();
+
+            /*glReadBuffer(GL_COLOR_ATTACHMENT0);
+            cv::Mat displayImg(1046, 1220, CV_8UC3);
+            glReadPixels(0, 0, 1220, 1046, GL_BGR, GL_UNSIGNED_BYTE, displayImg.data);
+            cv::flip(displayImg, displayImg, 0);
+
+            cv::imshow("map", displayImg);
+            video.write(displayImg);*/
 
             cv::Mat img = frame_drawer->DrawFrame();
             cv::imshow("mono-orb-slam3: current frame", img);
             cv::waitKey(delta_ms);
 
-            if (menuReset) {
+            /*if (menuReset) {
                 menuShowGraph = true;
                 menuShowKeyFrames = true;
                 menuShowPoints = true;
@@ -102,7 +128,7 @@ namespace mono_orb_slam3 {
                 menuFollowCamera = true;
                 system->Reset();
                 menuReset = false;
-            }
+            }*/
 
             if (stop()) {
                 while (isStopped()) {
@@ -113,6 +139,7 @@ namespace mono_orb_slam3 {
             if (checkFinish()) break;
         }
 
+        // video.release();
         setFinish();
     }
 
