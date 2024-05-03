@@ -54,9 +54,9 @@ namespace mono_orb_slam3 {
                     }
 
                     // initialize imu here
-                    if (imu_state == NOT_INITIALIZE && current_kf->id > 15) {
+                    if (imu_state == NOT_INITIALIZE && current_kf->id >= 24) {
                         mapper_logger << "try to initialize imu\n";
-                        initializeIMU(1e+6, 1e+12, true);
+                        initializeIMU(1e+12, 1e+12, true);
                     }
 
                     KeyFrameCulling();
