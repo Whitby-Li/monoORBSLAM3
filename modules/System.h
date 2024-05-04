@@ -38,15 +38,21 @@ namespace mono_orb_slam3 {
 
         void ShutDown();
 
-        void saveKeyFrameTrajectory(const std::string &fileName);
+        void saveKeyFrameTrajectory();
 
-        void saveKeyFrameVelocityAndBias(const std::string &fileName);
+        void saveKeyFrameVelocityAndBias();
 
-        void savePointCloudMap(const std::string &fileName);
+        void savePointCloudMap();
 
-        void saveKeyFrameDepth(const std::string &fileName);
+        void saveKeyFrameDepth();
 
         int getTrackingState();
+
+        void setSaveFolder(const std::string &path);
+
+        std::string getSaveFolder() {
+            return save_folder;
+        }
 
     private:
         /* Map */
@@ -69,6 +75,9 @@ namespace mono_orb_slam3 {
 
         bool be_reset;
         std::mutex reset_mutex;
+
+        /* Save Folder */
+        std::string save_folder;
     };
 
 } // mono_orb_slam3

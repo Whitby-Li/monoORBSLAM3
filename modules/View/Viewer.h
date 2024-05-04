@@ -23,8 +23,7 @@ namespace mono_orb_slam3 {
 
     class Viewer {
     public:
-        Viewer(System *systemPtr, FrameDrawer *frameDrawer, MapDrawer *mapDrawer,
-               const cv::FileNode &cameraNode, const cv::FileNode &viewNode);
+        Viewer(System *systemPtr, FrameDrawer *frameDrawer, MapDrawer *mapDrawer, const cv::FileNode &viewNode);
 
         void Run();
 
@@ -50,6 +49,8 @@ namespace mono_orb_slam3 {
 
         System *system;
 
+        int width, height;
+        int fps;
         int delta_ms;
         float view_point_x, view_point_y, view_point_z, view_point_f;
 

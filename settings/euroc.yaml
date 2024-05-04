@@ -65,6 +65,8 @@ IMU:
 
 # View
 View:
+  Width: 1000
+  Height: 1000
   KeyFrameSize: 0.1
   KeyFrameLineWidth: 1
   GraphLineWidth: 1
