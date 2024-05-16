@@ -11,11 +11,12 @@ using namespace std;
 namespace mono_orb_slam3 {
 
     Viewer::Viewer(System *systemPtr, FrameDrawer *frameDrawer, MapDrawer *mapDrawer,
-                   const cv::FileNode &viewNode)
+                   const cv::FileNode &viewNode, bool bRecord)
             : system(systemPtr), frame_drawer(frameDrawer), map_drawer(mapDrawer), finish_requested(false),
               be_finished(false), be_stopped(true), stop_requested(false) {
         fps = Camera::getCamera()->fps;
         delta_ms = 1000 / fps;
+        record = bRecord;
 
         width = viewNode["Width"];
         height = viewNode["Height"];
@@ -63,12 +64,19 @@ namespace mono_orb_slam3 {
         cv::moveWindow("mono-orb-slam3: current frame", width + 174, 50);*/
 
         bool beFollow = true;
-        const string recordURI = cv::format("ffmpeg:[fps=%d,bps=2388608,overwrite]//%s/map.avi", 30,
-                                            system->getSaveFolder().c_str());
-        pangolin::DisplayBase().RecordOnRender(recordURI);
+        cv::VideoWriter *frameVideo;
+        if (record) {
+            const string recordURI = cv::format("ffmpeg:[fps=%d,bps=2388608,overwrite]//%s/map.avi", 30,
+                                                system->getSaveFolder().c_str());
+            pangolin::DisplayBase().RecordOnRender(recordURI);
 
-        cv::VideoWriter frameVideo(system->getSaveFolder() + "/frame.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 30,
-                                   {Camera::getCamera()->width, Camera::getCamera()->height});
+            frameVideo = new cv::VideoWriter(system->getSaveFolder() + "/frame.avi",
+                                       cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 30,
+                                       {Camera::getCamera()->width, Camera::getCamera()->height});
+        }
+
+        cv::namedWindow("mono_orb_slam3: frame");
+        cv::moveWindow("mono_orb_slam3: frame", width + 174, 0);
 
         while (true) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -97,7 +105,9 @@ namespace mono_orb_slam3 {
             pangolin::FinishFrame();
 
             cv::Mat img = frame_drawer->DrawFrame();
-            frameVideo.write(img);
+            if (record)
+                frameVideo->write(img);
+            cv::imshow("mono_orb_slam3: frame", img);
             cv::waitKey(delta_ms);
 
             if (menuReset) {
@@ -119,7 +129,10 @@ namespace mono_orb_slam3 {
             if (checkFinish()) break;
         }
 
-        frameVideo.release();
+        if (record) {
+            frameVideo->release();
+            delete frameVideo;
+        }
         setFinish();
     }
 

@@ -17,8 +17,8 @@ using namespace std;
 
 namespace mono_orb_slam3 {
 
-    System::System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer) : be_reset(
-            false) {
+    System::System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer, bool recordViewer)
+            : be_reset( false) {
         cv::FileStorage fs(settingYaml, cv::FileStorage::READ);
         if (!fs.isOpened()) {
             cout << "fail to load " << settingYaml << endl;
@@ -63,7 +63,7 @@ namespace mono_orb_slam3 {
             frame_drawer = new FrameDrawer(camera_ptr->width, camera_ptr->height);
             map_drawer = new MapDrawer(point_map, viewNode);
 
-            viewer = new Viewer(this, frame_drawer, map_drawer, viewNode);
+            viewer = new Viewer(this, frame_drawer, map_drawer, viewNode, recordViewer);
             viewing = new thread(&Viewer::Run, viewer);
             tracker->setViewer(viewer);
         }
@@ -189,7 +189,7 @@ namespace mono_orb_slam3 {
         fout << "POINTS " << nPoints << std::endl;
         fout << "DATA ascii" << std::endl;
 
-        for (const auto &mp : mapPoints) {
+        for (const auto &mp: mapPoints) {
             const Eigen::Vector3f &pos = mp->getPos();
             fout << pos.x() << " " << pos.y() << " " << pos.z() << endl;
         }
@@ -205,7 +205,7 @@ namespace mono_orb_slam3 {
         ofstream fout(fileName);
         fout << fixed << setprecision(2);
 
-        for (const auto &kf : keyFrames) {
+        for (const auto &kf: keyFrames) {
             const Pose &Tcw = kf->getPose();
             const vector<cv::KeyPoint> &keyPoints = kf->raw_key_points;
             const vector<shared_ptr<MapPoint>> &mapPoints = kf->getMapPoints();

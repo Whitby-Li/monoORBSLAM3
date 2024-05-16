@@ -28,7 +28,7 @@ namespace mono_orb_slam3 {
 
     class System {
     public:
-        System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer = false);
+        System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer = false, bool recordViewer = false);
 
         ~System();
 
