@@ -31,9 +31,9 @@ ORB:
 # IMU
 IMU:
   NoiseGyro: 5.817764e-06
-  WalkGyro: 9.696273e-07
+  WalkGyro: 9.696273e-08
   NoiseAcc: 8.333333e-06
-  WalkAcc: 1.96e-05
+  WalkAcc: 1.96e-06
 
   Frequency: 100
 
@@ -65,6 +65,8 @@ IMU:
 
 # View
 View:
+  Width: 1000
+  Height: 1000
   KeyFrameSize: 0.6
   KeyFrameLineWidth: 2
   GraphLineWidth: 1
@@ -74,4 +76,4 @@ View:
   ViewPointX: 0
   ViewPointY: -100
   ViewPointZ: -0.1
-  ViewPointF: 800
+  ViewPointF: 2000

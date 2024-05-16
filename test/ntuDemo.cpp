@@ -72,7 +72,8 @@ int main(int argc, char *argv[]) {
     }
 
     SLAM.ShutDown();
-    SLAM.saveKeyFrameTrajectory(argv[4]);
+    SLAM.saveKeyFrameTrajectory();
+    SLAM.saveKeyFrameVelocityAndBias();
 
     return 0;
 }

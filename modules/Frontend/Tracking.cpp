@@ -301,6 +301,8 @@ namespace mono_orb_slam3 {
             return false;
         }
 
+        if (local_mapper->finishImuInit() && numMatch < 80) return true;
+
         // optimize frame pose with all matches
         num_inlier = Optimize::poseOptimize(current_frame);
         tracker_logger << titles[0] << "after pose optimize, " << num_inlier << " inlier match\n";
@@ -332,6 +334,8 @@ namespace mono_orb_slam3 {
             cerr << "trackLastKeyFrame: not enough match" << endl;
             return false;
         }
+
+        if (local_mapper->finishImuInit() && numMatch < 80) return true;
 
         num_inlier = Optimize::poseOptimize(current_frame);
         if (num_inlier < 15) {
@@ -417,7 +421,7 @@ namespace mono_orb_slam3 {
             if (state == OK) {
                 if (local_mapper->finishImuInit()) th = 2;
             } else {
-                th = 15;
+                th = 10;
             }
 
             tracker_logger << titles[0] << outView << " out view, " << numToMatch << " ready to match\n";

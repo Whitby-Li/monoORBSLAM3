@@ -26,7 +26,7 @@ namespace mono_orb_slam3 {
         cv::Mat DrawFrame();
 
     protected:
-        void DrawTextInfo(cv::Mat &image, int curState, cv::Mat &imgText) const;
+        void DrawTextInfo(cv::Mat &image, int curState) const;
 
         // info of the frame to be drawn
         cv::Mat img;

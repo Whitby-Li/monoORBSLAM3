@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     }
 
     SLAM.ShutDown();
-    SLAM.saveKeyFrameTrajectory(argv[4]);
+    SLAM.saveKeyFrameTrajectory();
 
     return 0;
 }
