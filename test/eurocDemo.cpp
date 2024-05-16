@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     }
 
     // 1. create SLAM system
-    System SLAM(argv[1], argv[2], false);
+    System SLAM(argv[1], argv[2], true);
 
     // 2. load data
     const string dataFolder = argv[3];
@@ -73,8 +73,8 @@ int main(int argc, char *argv[]) {
     }
 
     SLAM.ShutDown();
-    SLAM.saveKeyFrameTrajectory(argv[4]);
-    SLAM.saveKeyFrameVelocityAndBias(argv[5]);
+    SLAM.saveKeyFrameTrajectory();
+    SLAM.saveKeyFrameVelocityAndBias();
 
     return 0;
 }

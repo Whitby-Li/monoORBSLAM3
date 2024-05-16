@@ -65,13 +65,15 @@ IMU:
 
 # View
 View:
-  KeyFrameSize: 0.6
-  KeyFrameLineWidth: 2
+  Width: 850
+  Height: 768
+  KeyFrameSize: 0.15
+  KeyFrameLineWidth: 1.0
   GraphLineWidth: 1
   PointSize: 2
-  CameraSize: 0.7
+  CameraSize: 0.16
   CameraLineWidth: 3
-  ViewPointX: 0
-  ViewPointY: -100
-  ViewPointZ: -0.1
-  ViewPointF: 2000
+  ViewPointX: 0.0
+  ViewPointY: -4.0
+  ViewPointZ: -5.0
+  ViewPointF: 500.0

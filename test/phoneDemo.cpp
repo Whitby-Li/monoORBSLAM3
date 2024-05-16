@@ -74,9 +74,9 @@ int main(int argc, char *argv[]) {
     }
 
     SLAM.ShutDown();
-    SLAM.saveKeyFrameTrajectory(argv[4]);
-    SLAM.savePointCloudMap(dataFolder + "/map.pcd");
-    SLAM.saveKeyFrameDepth(dataFolder + "/depth.txt");
+    SLAM.saveKeyFrameTrajectory();
+    SLAM.savePointCloudMap();
+    SLAM.saveKeyFrameDepth();
     videoCapture.release();
 
     return 0;

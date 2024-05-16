@@ -11,13 +11,14 @@
 #include <iostream>
 #include <iomanip>
 #include <utility>
+#include <filesystem>
 
 using namespace std;
 
 namespace mono_orb_slam3 {
 
-    System::System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer) : be_reset(
-            false) {
+    System::System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer, bool recordViewer)
+            : be_reset( false) {
         cv::FileStorage fs(settingYaml, cv::FileStorage::READ);
         if (!fs.isOpened()) {
             cout << "fail to load " << settingYaml << endl;
@@ -62,7 +63,7 @@ namespace mono_orb_slam3 {
             frame_drawer = new FrameDrawer(camera_ptr->width, camera_ptr->height);
             map_drawer = new MapDrawer(point_map, viewNode);
 
-            viewer = new Viewer(this, frame_drawer, map_drawer, fs["Camera"], viewNode);
+            viewer = new Viewer(this, frame_drawer, map_drawer, viewNode, recordViewer);
             viewing = new thread(&Viewer::Run, viewer);
             tracker->setViewer(viewer);
         }
@@ -122,7 +123,8 @@ namespace mono_orb_slam3 {
             pangolin::BindToContext("mono-orb-slam3: map viewer");
     }
 
-    void System::saveKeyFrameTrajectory(const std::string &fileName) {
+    void System::saveKeyFrameTrajectory() {
+        const string fileName = save_folder + "/trajectory.txt";
         cout << endl << "saving keyframe trajectory to " << fileName << "..." << endl;
 
         vector<shared_ptr<KeyFrame>> keyFrames = point_map->getAllKeyFrames();
@@ -143,7 +145,8 @@ namespace mono_orb_slam3 {
         cout << "trajectory saved!" << endl;
     }
 
-    void System::saveKeyFrameVelocityAndBias(const std::string &fileName) {
+    void System::saveKeyFrameVelocityAndBias() {
+        const string fileName = save_folder + "/velo_and_bias.txt";
         cout << endl << "saving keyframe velocity to " << fileName << "...";
 
         vector<shared_ptr<KeyFrame>> keyFrames = point_map->getAllKeyFrames();
@@ -164,7 +167,8 @@ namespace mono_orb_slam3 {
         cout << "velocity saved!" << endl;
     }
 
-    void System::savePointCloudMap(const std::string &fileName) {
+    void System::savePointCloudMap() {
+        const string fileName = save_folder + "/map.pcd";
         cout << endl << "save point cloud map to " << fileName << " ... ";
 
         vector<shared_ptr<MapPoint>> mapPoints = point_map->getAllMapPoints();
@@ -185,7 +189,7 @@ namespace mono_orb_slam3 {
         fout << "POINTS " << nPoints << std::endl;
         fout << "DATA ascii" << std::endl;
 
-        for (const auto &mp : mapPoints) {
+        for (const auto &mp: mapPoints) {
             const Eigen::Vector3f &pos = mp->getPos();
             fout << pos.x() << " " << pos.y() << " " << pos.z() << endl;
         }
@@ -193,14 +197,15 @@ namespace mono_orb_slam3 {
         fout.close();
     }
 
-    void System::saveKeyFrameDepth(const std::string &fileName) {
+    void System::saveKeyFrameDepth() {
+        const string fileName = save_folder + "/kf_depth.txt";
         cout << endl << "save keyframe's depth to " << fileName << " ... ";
 
         vector<shared_ptr<KeyFrame>> keyFrames = point_map->getAllKeyFrames();
         ofstream fout(fileName);
         fout << fixed << setprecision(2);
 
-        for (const auto &kf : keyFrames) {
+        for (const auto &kf: keyFrames) {
             const Pose &Tcw = kf->getPose();
             const vector<cv::KeyPoint> &keyPoints = kf->raw_key_points;
             const vector<shared_ptr<MapPoint>> &mapPoints = kf->getMapPoints();
@@ -224,6 +229,14 @@ namespace mono_orb_slam3 {
     int System::getTrackingState() {
         lock_guard<mutex> lock(state_mutex);
         return tracking_state;
+    }
+
+    void System::setSaveFolder(const std::string &path) {
+        if (!filesystem::exists(path)) {
+            cout << "create save folder: " << path << endl;
+            filesystem::create_directories(path);
+        }
+        save_folder = path;
     }
 
 } // mono_orb_slam3

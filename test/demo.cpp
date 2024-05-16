@@ -16,7 +16,7 @@ using namespace mono_orb_slam3;
 int main(int argc, char *argv[]) {
     if (argc < 4) {
         cout << "Usage: " << argv[0]
-             << " <setting yaml> <vocabulary file> <dataset folder> <trajectory save path(txt)> [<velo and bias save path(txt)>] [<map save path(pcd)>]";
+             << " <setting yaml> <vocabulary file> <dataset folder> <output folder>";
         return 1;
     }
 
@@ -33,7 +33,8 @@ int main(int argc, char *argv[]) {
     cout << "load " << num_imu << " imu data" << endl;
 
     // 2. create SLAM system
-    System SLAM(argv[1], argv[2], true);
+    System SLAM(argv[1], argv[2], true, true);
+    SLAM.setSaveFolder(argv[4]);
 
     // 3. main loop
     int idx1 = 0, idx2 = 0;
@@ -77,12 +78,7 @@ int main(int argc, char *argv[]) {
 
     // 4. shutdown SLAM system, and save trajectory and others
     SLAM.ShutDown();
-    SLAM.saveKeyFrameTrajectory(argv[4]);
-
-    if (argc > 5)
-        SLAM.saveKeyFrameVelocityAndBias(argv[5]);
-    if (argc > 6)
-        SLAM.savePointCloudMap(argv[6]);
-
+    /*SLAM.saveKeyFrameTrajectory();
+    SLAM.saveKeyFrameVelocityAndBias();*/
     return 0;
 }
