@@ -52,7 +52,6 @@ add_library(mono_orb_slam3 SHARED
         modules/Frontend/LocalMapping.cpp
         modules/Backend/G2oTypes.cpp
         modules/Backend/Optimize.cpp
-        modules/Log/Logger.cpp
         modules/View/FrameDrawer.cpp
         modules/View/MapDrawer.cpp
         modules/View/Viewer.cpp

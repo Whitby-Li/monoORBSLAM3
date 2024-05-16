@@ -5,7 +5,6 @@
 #include "Optimize.h"
 #include "G2oTypes.h"
 #include "Sensor/Camera.h"
-#include "Log/Logger.h"
 
 #include <g2o/core/optimization_algorithm_levenberg.h>
 #include <g2o/core/robust_kernel_impl.h>
@@ -805,10 +804,6 @@ namespace mono_orb_slam3 {
             }
         }
 
-        mapper_logger << titles[0] << "there are " << localKeyFrames.size() << " local keyframes, "
-                      << fixedKeyFrames.size() << " fixed keyframes, " << localMapPoints.size()
-                      << " local map-points\n";
-
         // 2. set optimizer
         g2o::SparseOptimizer optimizer;
         auto *solver = new g2o::OptimizationAlgorithmLevenberg(
@@ -952,8 +947,6 @@ namespace mono_orb_slam3 {
 
     void Optimize::localInertialBundleAdjustment(const std::shared_ptr<KeyFrame> &keyFrame, Map *pointMap,
                                                  bool beLarge) {
-        mapper_logger << "localInertialBundleAdjustment\n";
-
         // 1. get optimizable keyframes, fixed keyframes and map-points
         int maxOpt = 10, iterations = 10;
         if (beLarge) {
@@ -965,14 +958,6 @@ namespace mono_orb_slam3 {
         const unsigned int maxKFId = keyFrame->id;
 
         vector<shared_ptr<KeyFrame>> optimizeKeyFrames = pointMap->getRecentKeyFrames(numOpt);
-
-        mapper_logger << "Initial Pose\n";
-        for (const auto &kf: optimizeKeyFrames) {
-            mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
-            mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
-            mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
-            mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
-        }
 
         // 2. set up optimizer
         g2o::SparseOptimizer optimizer;
@@ -1051,14 +1036,6 @@ namespace mono_orb_slam3 {
             newBias.ba = dynamic_cast<Vertex3D *>(optimizer.vertex(maxKFId + 3 * kf->id + 3))->estimate().cast<float>();
             kf->setImuBias(newBias);
         }
-
-        mapper_logger << "After inertial optimize\n";
-        for (const auto &kf: optimizeKeyFrames) {
-            mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
-            mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
-            mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
-            mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
-        }
     }
 
     void Optimize::localFullBundleAdjustment(const std::shared_ptr<KeyFrame> &keyFrame, Map *pointMap, bool beLarge,
@@ -1106,10 +1083,6 @@ namespace mono_orb_slam3 {
 
             if (fixedKeyFrames.size() >= maxNumFixed) break;
         }
-
-        mapper_logger << titles[0] << "there are " << optimizeKeyFrames.size() << " local keyframes, "
-                      << fixedKeyFrames.size()
-                      << " fixed keyframes, " << localMapPoints.size() << " local map-points\n";
 
         // 2. set up optimizer
         g2o::SparseOptimizer optimizer;
