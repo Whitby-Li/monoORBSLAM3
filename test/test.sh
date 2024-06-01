@@ -5,7 +5,7 @@ cd /home/whitby/Development/CLionProjects/slam/mono_orb_slam3
 dataset_name="ntu_viral"
 dataset_folder="/datasets/$dataset_name"
 
-find "$dataset_folder" -maxdepth 1 -mindepth 1 -type d -not -name "calib" -print0 | while IFS= read -r -d '' folder; do
+find "$dataset_folder" -maxdepth 1 -mindepth 1 -type d -not -name "calib" -print0 | sort -z | while IFS= read -r -d '' folder; do
     seq_name=$(basename "$folder")
     echo "$folder $seq_name"
 

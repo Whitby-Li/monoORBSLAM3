@@ -139,8 +139,8 @@ namespace mono_orb_slam3 {
         // jacobian wrt gyro bias
         _jacobianOplus[1].setZero();
         _jacobianOplus[1].block<3, 3>(0, 0) = -invJr * eR.transpose() * lie::RightJacobianSO3(JRg * delta_bg) * JRg;
-        _jacobianOplus[1].block<3, 3>(3, 0) = -JVg;
-        _jacobianOplus[1].block<3, 3>(6, 0) = -JPg;
+        /*_jacobianOplus[1].block<3, 3>(3, 0) = -JVg;
+        _jacobianOplus[1].block<3, 3>(6, 0) = -JPg;*/
 
         // jacobian wrt acc bias
         _jacobianOplus[2].setZero();
@@ -227,8 +227,8 @@ namespace mono_orb_slam3 {
         // jacobian wrt bg
         _jacobianOplus[1].setZero();
         _jacobianOplus[1].block<3, 3>(0, 0) = -invJr * eR.transpose() * lie::RightJacobianSO3(JRg * delta_bg) * JRg;
-        _jacobianOplus[1].block<3, 3>(3, 0) = -JVg;
-        _jacobianOplus[1].block<3, 3>(6, 0) = -JPg;
+        /*_jacobianOplus[1].block<3, 3>(3, 0) = -JVg;
+        _jacobianOplus[1].block<3, 3>(6, 0) = -JPg;*/
 
         // jacobian wrt ba
         _jacobianOplus[2].setZero();
@@ -342,8 +342,8 @@ namespace mono_orb_slam3 {
         // jacobian wrt gyro bias
         _jacobianOplus[1].setZero();
         _jacobianOplus[1].block<3, 3>(0, 0) = -invJr * eR.transpose() * lie::RightJacobianSO3(JRg * delta_bg) * JRg;
-        _jacobianOplus[1].block<3, 3>(3, 0) = -JVg;
-        _jacobianOplus[1].block<3, 3>(6, 0) = -JPg;
+        /*_jacobianOplus[1].block<3, 3>(3, 0) = -JVg;
+        _jacobianOplus[1].block<3, 3>(6, 0) = -JPg;*/
 
         // jacobian wrt acc bias
         _jacobianOplus[2].setZero();

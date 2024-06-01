@@ -528,7 +528,8 @@ namespace mono_orb_slam3 {
 
     void Tracking::Initialization() {
         if (current_frame->num_kps > 500) {
-            if (last_frame == nullptr || current_frame->id - last_frame->id > 20) {
+            if (last_frame == nullptr) {
+                priori_matches.clear();
                 priori_matches.resize(current_frame->num_kps);
                 for (int i = 0; i < current_frame->num_kps; ++i)
                     priori_matches[i] = current_frame->key_points[i].pt;

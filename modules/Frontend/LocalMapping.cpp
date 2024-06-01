@@ -46,8 +46,8 @@ namespace mono_orb_slam3 {
                     }
 
                     // initialize imu here
-                    if (imu_state == NOT_INITIALIZE && current_kf->id > 23) {
-                        initializeIMU(1e+8, 1e+12, true);
+                    if (imu_state == NOT_INITIALIZE && point_map->getNumKeyFrames() >= 15) {
+                        initializeIMU(1e+8, 1e+8, true);
                     }
 
                     KeyFrameCulling();
@@ -282,7 +282,7 @@ namespace mono_orb_slam3 {
         size_t last_kf_idx = 0;
         for (size_t idx = 1; idx < numKF - 1; ++idx) {
             if (recentKeyFrames[idx]->id == 0 ||
-                recentKeyFrames[idx + 1]->timestamp - recentKeyFrames[last_kf_idx]->timestamp > 1.5)
+                recentKeyFrames[idx + 1]->timestamp - recentKeyFrames[last_kf_idx]->timestamp > 2)
                 continue;
 
             auto &kf = recentKeyFrames[idx];
