@@ -366,9 +366,9 @@ namespace mono_orb_slam3 {
         Eigen::Vector3d g, gI;
     };
 
-    class EdgeInertialG : public g2o::BaseMultiEdge<9, Vector9d> {
+    class EdgeInertialGS2 : public g2o::BaseMultiEdge<9, Vector9d> {
     public:
-        EdgeInertialG(const CameraImuPose &pose1, const CameraImuPose &pose2,
+        EdgeInertialGS2(const CameraImuPose &pose1, const CameraImuPose &pose2,
                       const std::shared_ptr<PreIntegrator> &preIntegrator);
 
         bool read(std::istream &is) override { return true; }
@@ -380,7 +380,8 @@ namespace mono_orb_slam3 {
         void linearizeOplus() override;
 
         Eigen::Matrix3d Rb1w, Rwb2;
-        Eigen::Vector3d twb1, twb2;
+        Eigen::Vector3d Oc1, Oc2;
+        Eigen::Vector3d Pc1b1, Pc2b2;
         const Eigen::Matrix3d JRg, JVg, JPg;
         const Eigen::Matrix3d JVa, JPa;
         std::shared_ptr<PreIntegrator> pre_integrator;

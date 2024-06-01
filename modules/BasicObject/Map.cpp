@@ -99,11 +99,7 @@ namespace mono_orb_slam3 {
         lock_guard<mutex> lock(map_mutex);
         for (const auto &kf: keyframes) {
             Pose Tcw = kf->getPose();
-            if (beFirst) {
-                kf->setPose(Tcw.R * Rwy, Tcw.t * s);
-            } else {
-                kf->setPose(Tcw.R * Rwy, Tcw.t);
-            }
+            kf->setPose(Tcw.R * Rwy, Tcw.t * s);
 
             Eigen::Vector3f Vw = kf->getVelocity();
             if (beFirst) {
@@ -114,9 +110,7 @@ namespace mono_orb_slam3 {
         }
 
         for (const auto &mp: map_points) {
-            if (beFirst)
-                mp->setPos(Ryw * mp->getPos() * s);
-            else mp->setPos(Ryw * mp->getPos());
+            mp->setPos(Ryw * mp->getPos() * s);
             mp->update();
         }
 

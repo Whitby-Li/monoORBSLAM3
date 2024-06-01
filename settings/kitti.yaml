@@ -30,10 +30,10 @@ ORB:
 
 # IMU
 IMU:
-  NoiseGyro: 5.817764e-06
-  WalkGyro: 9.696273e-08
-  NoiseAcc: 8.333333e-06
-  WalkAcc: 1.96e-06
+  NoiseGyro: 5.817764e-04
+  WalkGyro: 9.696273e-06
+  NoiseAcc: 8.333333e-04
+  WalkAcc: 1.96e-04
 
   Frequency: 100
 

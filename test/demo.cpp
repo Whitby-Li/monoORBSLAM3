@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     cout << "load " << num_imu << " imu data" << endl;
 
     // 2. create SLAM system
-    System SLAM(argv[1], argv[2], true);
+    System SLAM(argv[1], argv[2], false);
     SLAM.setSaveFolder(argv[4]);
 
     // 3. main loop

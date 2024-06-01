@@ -47,12 +47,14 @@ namespace mono_orb_slam3 {
 
                     // initialize imu here
                     if (imu_state == NOT_INITIALIZE && point_map->getNumKeyFrames() >= 15) {
-                        initializeIMU(1e+8, 1e+8, true);
+                        initializeIMU(1e+6, 1e+8, true);
+                    } else if (imu_state == INITIALIZED && point_map->getNumKeyFrames() >= 30) {
+                        initializeIMU(1e+8, 1e+10, false);
                     }
 
                     KeyFrameCulling();
 
-                    if (imu_state == INITIALIZED && current_kf->timestamp - last_inertial_time > 3.0) {
+                    if (imu_state == INITIALIZED_AGAIN && current_kf->timestamp - last_inertial_time > 3.0) {
                         gravityRefinement();
                     }
 
@@ -359,11 +361,7 @@ namespace mono_orb_slam3 {
         }
 
         double scale = 1.0;
-        Eigen::Matrix3f Rwg_f = Rwg.cast<float>();
-
         Optimize::inertialOptimize(point_map, Rwg, scale, prioriG, prioriA, beFirst);
-
-        Rwg_f = Rwg.cast<float>();
 
         if (scale < 1e-1) {
             imu_initializing = false;
@@ -379,10 +377,13 @@ namespace mono_orb_slam3 {
 
         if (imu_state == NOT_INITIALIZE) {
             imu_state = INITIALIZED;
+        } else if (imu_state == INITIALIZED) {
+            imu_state = INITIALIZED_AGAIN;
         }
 
         // full inertial BA
-        Optimize::fullInertialOptimize(point_map, 100, beFirst, false, prioriG, prioriA);
+        if (beFirst)
+            Optimize::fullInertialOptimize(point_map, 100, beFirst, false, prioriG, prioriA);
 
         // process keyframes in the queue
         while (getNewKeyFrame()) {

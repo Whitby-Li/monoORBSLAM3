@@ -162,15 +162,18 @@ namespace mono_orb_slam3 {
         _jacobianOplus[5].block<3, 1>(6, 0) = scale * Rb1w * (Oc2 - Oc1 - velo1 * dt);
     }
 
-    EdgeInertialG::EdgeInertialG(const CameraImuPose &pose1, const CameraImuPose &pose2,
+    EdgeInertialGS2::EdgeInertialGS2(const CameraImuPose &pose1, const CameraImuPose &pose2,
                                  const std::shared_ptr<PreIntegrator> &preIntegrator)
-            : Rb1w(pose1.R_wb.transpose()), Rwb2(pose2.R_wb), twb1(pose1.t_wb), twb2(pose2.t_wb),
+            : Rb1w(pose1.R_wb.transpose()), Rwb2(pose2.R_wb),
               JRg(preIntegrator->JRg.cast<double>()), JVg(preIntegrator->JVg.cast<double>()),
               JPg(preIntegrator->JPg.cast<double>()), JVa(preIntegrator->JVa.cast<double>()),
               JPa(preIntegrator->JPa.cast<double>()), pre_integrator(preIntegrator), dt(preIntegrator->delta_t) {
         // this edge links 6 vertices
-        g2o::BaseMultiEdge<9, Vector9d>::resize(5);
+        g2o::BaseMultiEdge<9, Vector9d>::resize(6);
         gI << 0, 0, -GRAVITY_VALUE;
+
+        Oc1 = -pose1.R_cw.transpose() * pose1.t_cw, Oc2 = -pose2.R_cw.transpose() * pose2.t_cw;
+        Pc1b1 = pose1.getTranslationCameraToImu(), Pc2b2 = pose2.getTranslationCameraToImu();
 
         Eigen::Matrix<double, 9, 9> info = pre_integrator->C.block<9, 9>(0, 0).cast<double>().inverse();
         info = (info + info.transpose()) / 2;
@@ -183,12 +186,13 @@ namespace mono_orb_slam3 {
         setInformation(info);
     }
 
-    void EdgeInertialG::computeError() {
+    void EdgeInertialGS2::computeError() {
         const auto velo1 = dynamic_cast<const Vertex3D *>(_vertices[0])->estimate();
         const auto bg = dynamic_cast<const Vertex3D *>(_vertices[1])->estimate().cast<float>();
         const auto ba = dynamic_cast<const Vertex3D *>(_vertices[2])->estimate().cast<float>();
         const auto velo2 = dynamic_cast<const Vertex3D *>(_vertices[3])->estimate();
         const auto gDir = dynamic_cast<const VertexGravity *>(_vertices[4])->estimate();
+        const auto scale = dynamic_cast<const VertexScale *>(_vertices[5])->estimate();
 
         g = gDir.R_wg * gI;
         const Eigen::Matrix3d dR = pre_integrator->getDeltaRotation(bg).cast<double>();
@@ -197,17 +201,19 @@ namespace mono_orb_slam3 {
 
         const Eigen::Vector3d &er = lie::LogSO3(dR.transpose() * Rb1w * Rwb2);
         const Eigen::Vector3d &ev = Rb1w * (velo2 - velo1 - g * dt) - dV;
-        const Eigen::Vector3d &ep = Rb1w * (twb2 - twb1 - velo1 * dt - 0.5 * g * dt * dt) - dP;
+        const Eigen::Vector3d ep =
+                Rb1w * (scale * Oc2 + Pc2b2 - scale * Oc1 - Pc1b1 - velo1 * dt - 0.5 * g * dt * dt) - dP;
 
         _error << er, ev, ep;
     }
 
-    void EdgeInertialG::linearizeOplus() {
+    void EdgeInertialGS2::linearizeOplus() {
         const auto velo1 = dynamic_cast<const Vertex3D *>(_vertices[0])->estimate();
         const auto bg = dynamic_cast<const Vertex3D *>(_vertices[1])->estimate().cast<float>();
         const auto ba = dynamic_cast<const Vertex3D *>(_vertices[2])->estimate().cast<float>();
         const auto velo2 = dynamic_cast<const Vertex3D *>(_vertices[3])->estimate();
         const auto gDir = dynamic_cast<const VertexGravity *>(_vertices[4])->estimate();
+        const auto scale = dynamic_cast<const VertexScale *>(_vertices[5])->estimate();
 
         const Eigen::Vector3d delta_bg = (bg - pre_integrator->bias.bg).cast<double>();
         Eigen::MatrixXd gm = Eigen::MatrixXd::Zero(3, 2);
@@ -243,6 +249,10 @@ namespace mono_orb_slam3 {
         _jacobianOplus[4].setZero();
         _jacobianOplus[4].block<3, 2>(3, 0) = -Rb1w * JGdTheta * dt;
         _jacobianOplus[4].block<3, 2>(6, 0) = -0.5 * dt * dt * Rb1w * JGdTheta;
+
+        // jacobian wrt scale
+        _jacobianOplus[5].setZero();
+        _jacobianOplus[5].block<3, 1>(6, 0) = scale * Rb1w * (Oc2 - Oc1);
     }
 
     EdgeGravity::EdgeGravity(const std::shared_ptr<KeyFrame> &kf1, const std::shared_ptr<KeyFrame> &kf2) {

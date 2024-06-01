@@ -107,7 +107,7 @@ namespace mono_orb_slam3 {
         // 2. set vertices and edges
         // bias, gravity and scale
         int numKF = (int) keyFrames.size();
-        const Bias initialBias = ImuCalib::getImuCalib()->initial_bias;
+        const Bias initialBias = keyFrames[0]->pre_integrator->updated_bias;
         const shared_ptr<PreIntegrator> &backPreIntegrator = keyFrames.back()->pre_integrator;
         auto *vGyroBias = new Vertex3D(initialBias.bg);
         vGyroBias->setId(numKF + 1);
@@ -132,11 +132,9 @@ namespace mono_orb_slam3 {
         optimizer.addVertex(vGravityDir);
 
         g2o::BaseVertex<1, double> *vScale;
-        if (beFirst) {
-            vScale = new VertexScale(scale);
-            vScale->setId(numKF + 4);
-            optimizer.addVertex(vScale);
-        }
+        vScale = new VertexScale(scale);
+        vScale->setId(numKF + 4);
+        optimizer.addVertex(vScale);
 
         // velocity vertices and inertial edge
         vector<Vertex3D *> veloVertices;
@@ -149,6 +147,7 @@ namespace mono_orb_slam3 {
 
             auto *vVelo = new Vertex3D(kf->getVelocity());
             vVelo->setId(i);
+            if (!beFirst && i == numKF - 1) vVelo->setFixed(true);
             optimizer.addVertex(vVelo);
             veloVertices.push_back(vVelo);
 
@@ -163,12 +162,13 @@ namespace mono_orb_slam3 {
                     eInertial->setVertex(5, vScale);
                     optimizer.addEdge(eInertial);
                 } else {
-                    auto *eInertial = new EdgeInertialG(lastPose, curPose, last_kf->pre_integrator);
+                    auto *eInertial = new EdgeInertialGS2(lastPose, curPose, last_kf->pre_integrator);
                     eInertial->setVertex(0, veloVertices[i - 1]);
                     eInertial->setVertex(1, vGyroBias);
                     eInertial->setVertex(2, vAccBias);
                     eInertial->setVertex(3, veloVertices[i]);
                     eInertial->setVertex(4, vGravityDir);
+                    eInertial->setVertex(5, vScale);
                     optimizer.addEdge(eInertial);
                 }
             }
@@ -184,7 +184,7 @@ namespace mono_orb_slam3 {
 
         // 4. recover
         Rwg = vGravityDir->estimate().R_wg;
-        if (beFirst) scale = vScale->estimate();
+        scale = vScale->estimate();
         Eigen::Vector3f bg = vGyroBias->estimate().cast<float>();
         Eigen::Vector3f ba = vAccBias->estimate().cast<float>();
         Bias newBias(bg, ba);
@@ -588,9 +588,9 @@ namespace mono_orb_slam3 {
         /*auto *eGyroBiasPriori = new EdgePriori3D(lastKF->bias_priori.bg);
         eGyroBiasPriori->setVertex(0, vGyroBias1);
         eGyroBiasPriori->setInformation(lastKF->gyro_info.cast<double>());
-        optimizer.addEdge(eGyroBiasPriori);
+        optimizer.addEdge(eGyroBiasPriori);*/
 
-        auto *eAccBiasPriori = new EdgePriori3D(lastKF->bias_priori.ba);
+        /*auto *eAccBiasPriori = new EdgePriori3D(lastKF->bias_priori.ba);
         eAccBiasPriori->setVertex(0, vAccBias1);
         eAccBiasPriori->setInformation(lastKF->acc_info.cast<double>());
         optimizer.addEdge(eAccBiasPriori);*/
@@ -600,14 +600,12 @@ namespace mono_orb_slam3 {
         optimizer.optimize(20);
 
         // 5. recover
-        Bias newBias(vGyroBias1->estimate().cast<float>(), vAccBias1->estimate().cast<float>());
         lastKF->setVelocity(vVelo1->estimate().cast<float>());
-
-        frame->pre_integrator->setNewBias(newBias);
         frame->v_w = vVelo2->estimate().cast<float>();
     }
 
     int Optimize::poseFullOptimize(const std::shared_ptr<KeyFrame> &lastKF, const std::shared_ptr<Frame> &frame) {
+        cout << "pose full optimize" << endl;
         // 1. set optimizer
         g2o::SparseOptimizer optimizer;
         auto *solver = new g2o::OptimizationAlgorithmLevenberg(
@@ -633,12 +631,10 @@ namespace mono_orb_slam3 {
         const Bias &bias1 = preIntegrator->updated_bias;
         auto *vGyroBias1 = new Vertex3D(bias1.bg);
         vGyroBias1->setId(2);
-        vGyroBias1->setFixed(true);
         optimizer.addVertex(vGyroBias1);
 
         auto *vAccBias1 = new Vertex3D(bias1.ba);
         vAccBias1->setId(3);
-        vAccBias1->setFixed(true);
         optimizer.addVertex(vAccBias1);
 
         // frame vertices
@@ -666,7 +662,7 @@ namespace mono_orb_slam3 {
         eVeloPriori->setInformation(lastKF->velo_info.cast<double>());
         optimizer.addEdge(eVeloPriori);
 
-        /*auto *eGyroBiasPriori = new EdgePriori3D(lastKF->bias_priori.bg);
+        auto *eGyroBiasPriori = new EdgePriori3D(lastKF->bias_priori.bg);
         eGyroBiasPriori->setVertex(0, vGyroBias1);
         eGyroBiasPriori->setInformation(lastKF->gyro_info.cast<double>());
         optimizer.addEdge(eGyroBiasPriori);
@@ -674,7 +670,7 @@ namespace mono_orb_slam3 {
         auto *eAccBiasPriori = new EdgePriori3D(lastKF->bias_priori.ba);
         eAccBiasPriori->setVertex(0, vAccBias1);
         eAccBiasPriori->setInformation(lastKF->acc_info.cast<double>());
-        optimizer.addEdge(eAccBiasPriori);*/
+        optimizer.addEdge(eAccBiasPriori);
 
         // map-point vertices and edges
         const int n = frame->num_kps;
@@ -742,9 +738,13 @@ namespace mono_orb_slam3 {
 
 
         // 4. recover
-        const CameraImuPose optimizePose = vPose2->estimate();
+        Bias newBias(vGyroBias1->estimate().cast<float>(), vAccBias1->estimate().cast<float>());
+        lastKF->setImuBias(newBias);
+        lastKF->setVelocity(vVelo1->estimate().cast<float>());
 
+        const CameraImuPose optimizePose = vPose2->estimate();
         frame->setPose({optimizePose.R_cw.cast<float>(), optimizePose.t_cw.cast<float>()});
+        frame->pre_integrator->setNewBias(newBias);
         frame->v_w = vVelo2->estimate().cast<float>();
 
         // discard outlier map-points
