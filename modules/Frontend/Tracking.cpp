@@ -597,7 +597,7 @@ namespace mono_orb_slam3 {
         initial_logger << "extractor " << current_frame->num_kps << " orb features\n";
 
         if (current_frame->num_kps > 500) {
-            if (last_frame == nullptr) {
+            if (last_frame == nullptr || current_frame->timestamp - last_frame->timestamp > 1) {
                 initial_logger << "set first frame (id " << current_frame->id << ")\n";
                 priori_matches.resize(current_frame->num_kps);
                 for (int i = 0; i < current_frame->num_kps; ++i)

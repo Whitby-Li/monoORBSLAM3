@@ -6,21 +6,23 @@
 #define MONO_ORB_SLAM3_LOCALMAPPING_H
 
 #include "BasicObject/Map.h"
-#include "Tracking.h"
+#include "System.h"
 
 namespace mono_orb_slam3 {
+
+    class System;
 
     class Tracking;
 
     class LocalMapping {
     public:
         enum ImuState {
-                NOT_INITIALIZE = 0,
-                INITIALIZED = 1,
-                FINISH = 2
+            NOT_INITIALIZE = 0,
+            INITIALIZED = 1,
+            FINISH = 2
         };
 
-        explicit LocalMapping(Map *pointMap) : point_map(pointMap) {};
+        explicit LocalMapping(System *system_, Map *pointMap) : system(system_), point_map(pointMap) {};
 
         /// Main function
         void Run();
@@ -77,6 +79,9 @@ namespace mono_orb_slam3 {
 
         void KeyFrameCulling();
 
+        bool
+        imuInitEstimated(const std::vector<std::shared_ptr<KeyFrame>> &keyFrames, Eigen::Matrix3f &Rwg, float &scale);
+
         void initializeIMU(float prioriG = 1e2, float prioriA = 1e6, bool beFirst = false);
 
         void gravityRefinement();
@@ -88,6 +93,7 @@ namespace mono_orb_slam3 {
         void resetIfRequested();
 
         /* thread */
+        System *system = nullptr;
         Tracking *tracker = nullptr;
 
         ImuState imu_state = NOT_INITIALIZE;

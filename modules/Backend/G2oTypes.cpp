@@ -105,9 +105,9 @@ namespace mono_orb_slam3 {
         const Eigen::Vector3d dP = pre_integrator->getDeltaPosition(bg, ba).cast<double>();
 
         const Eigen::Vector3d er = lie::LogSO3(dR.transpose() * Rb1w * Rwb2);
-        const Eigen::Vector3d ev = Rb1w * (scale * (velo2 - velo1) - g * dt) - dV;
+        const Eigen::Vector3d ev = Rb1w * (velo2 - velo1 - g * dt) - dV;
         const Eigen::Vector3d ep =
-                Rb1w * (scale * Oc2 + Pc2b2 - scale * Oc1 - Pc1b1 - scale * velo1 * dt - 0.5 * g * dt * dt) - dP;
+                Rb1w * (scale * Oc2 + Pc2b2 - scale * Oc1 - Pc1b1 - velo1 * dt - 0.5 * g * dt * dt) - dP;
 
         _error << er, ev, ep;
     }
@@ -133,14 +133,12 @@ namespace mono_orb_slam3 {
 
         // jacobian wrt velo1
         _jacobianOplus[0].setZero();
-        _jacobianOplus[0].block<3, 3>(3, 0) = -scale * Rb1w;
-        _jacobianOplus[0].block<3, 3>(6, 0) = -scale * dt * Rb1w;
+        _jacobianOplus[0].block<3, 3>(3, 0) = -Rb1w;
+        _jacobianOplus[0].block<3, 3>(6, 0) = -dt * Rb1w;
 
         // jacobian wrt gyro bias
         _jacobianOplus[1].setZero();
         _jacobianOplus[1].block<3, 3>(0, 0) = -invJr * eR.transpose() * lie::RightJacobianSO3(JRg * delta_bg) * JRg;
-        _jacobianOplus[1].block<3, 3>(3, 0) = -JVg;
-        _jacobianOplus[1].block<3, 3>(6, 0) = -JPg;
 
         // jacobian wrt acc bias
         _jacobianOplus[2].setZero();
@@ -149,7 +147,7 @@ namespace mono_orb_slam3 {
 
         // jacobian wrt velo2
         _jacobianOplus[3].setZero();
-        _jacobianOplus[3].block<3, 3>(3, 0) = scale * Rb1w;
+        _jacobianOplus[3].block<3, 3>(3, 0) = Rb1w;
 
         // jacobian wrt gravity direction
         _jacobianOplus[4].setZero();
@@ -158,8 +156,7 @@ namespace mono_orb_slam3 {
 
         // jacobian wrt scale factor
         _jacobianOplus[5].setZero();
-        _jacobianOplus[5].block<3, 1>(3, 0) = scale * Rb1w * (velo2 - velo1);
-        _jacobianOplus[5].block<3, 1>(6, 0) = scale * Rb1w * (Oc2 - Oc1 - velo1 * dt);
+        _jacobianOplus[5].block<3, 1>(6, 0) = scale * Rb1w * (Oc2 - Oc1);
     }
 
     EdgeInertialG::EdgeInertialG(const CameraImuPose &pose1, const CameraImuPose &pose2,

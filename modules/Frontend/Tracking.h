@@ -15,6 +15,8 @@ namespace mono_orb_slam3 {
 
     class System;
 
+    class LocalMapping;
+
     class Tracking {
     public:
         enum State {

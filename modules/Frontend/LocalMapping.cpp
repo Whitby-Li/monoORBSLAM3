@@ -54,9 +54,9 @@ namespace mono_orb_slam3 {
                     }
 
                     // initialize imu here
-                    if (imu_state == NOT_INITIALIZE && current_kf->id > 23) {
+                    if (imu_state == NOT_INITIALIZE && point_map->getNumKeyFrames() >= 12) {
                         mapper_logger << "try to initialize imu\n";
-                        initializeIMU(1e+8, 1e+12, true);
+                        initializeIMU(1e+6, 1e+12, true);
                     }
 
                     KeyFrameCulling();
@@ -371,6 +371,103 @@ namespace mono_orb_slam3 {
         }
     }
 
+    bool LocalMapping::imuInitEstimated(const std::vector<std::shared_ptr<KeyFrame>> &keyFrames, Eigen::Matrix3f &Rwg,
+                                        float &scale) {
+        int numKF = keyFrames.size();
+        if (numKF < 3) return false;
+
+        vector<Eigen::Vector3f> deltaVelos(numKF - 1);
+        vector<float> delta_times(numKF - 1);
+
+        // 1. estimated gyro bias
+        Bias bias = keyFrames[0]->pre_integrator->updated_bias;
+        Eigen::Matrix3f R12 = keyFrames[0]->getImuPose().R.transpose() * keyFrames[1]->getImuPose().R;
+        Eigen::Matrix3f deltaR12 = keyFrames[0]->pre_integrator->getUpdatedDeltaRotation();
+        Eigen::Vector3f errorOmega = lie::LogSO3f(R12 * deltaR12.transpose());
+        Eigen::Vector3f delta_bg = keyFrames[0]->pre_integrator->JRg.inverse() * errorOmega;
+        mapper_logger << titles[0] << "estimated delta bias gyro: " << delta_bg << "\n";
+
+        if (delta_bg.norm() < 0.25) bias.bg += delta_bg;
+
+        // 2. estimated gravity
+        Eigen::Vector3f gravityDir = Eigen::Vector3f::Zero();
+        for (int i = 0; i < numKF - 1; ++i) {
+            deltaVelos[i] =
+                    keyFrames[i]->getImuPose().R * keyFrames[i]->pre_integrator->getDeltaVelocity(bias.bg, bias.ba);
+            delta_times[i] = keyFrames[i]->pre_integrator->delta_t;
+            mapper_logger << titles[1] << "imu pre-integration: time " <<  delta_times[i] << ", velo [" << deltaVelos[i] << "]\n";
+            gravityDir -= deltaVelos[i];
+        }
+
+        gravityDir.normalize();
+        mapper_logger << titles[0] << "gravity norm vector: " << gravityDir << "\n";
+        Eigen::Vector3f gI(0, 0, -1);
+        Eigen::Vector3f v = gI.cross(gravityDir);
+        const float nv = v.norm();
+        const float theta = acos(gI.dot(gravityDir));
+        Rwg = lie::ExpSO3f(theta * v / nv);
+
+        mapper_logger << titles[0] << "gravity rotation axis: " << v << "\n";
+        mapper_logger << titles[0] << "gravity rotation angle: " << theta << "\n";
+
+        // 3. estimated scale and acc bias
+        Eigen::Vector3f g = Rwg * Eigen::Vector3f(0, 0, -GRAVITY_VALUE);
+        Eigen::Vector3f tcb = ImuCalib::getImuCalib()->t_cb.cast<float>();
+        vector<Eigen::Vector3f> deltaPosVelos(numKF - 1), camVelos(numKF - 1), transDeltaVelos(numKF - 1);
+        int maxIndex = 1;
+        for (int i = 0; i < numKF - 1; ++i) {
+            deltaVelos[i] += g * delta_times[i];
+            deltaPosVelos[i] = 0.5 * g * delta_times[i]
+                    + keyFrames[i]->getImuPose().R * keyFrames[i]->pre_integrator->getDeltaPosition(bias.bg, bias.ba) / delta_times[i];
+
+            Pose Twc1 = keyFrames[i]->getPose().inverse(), Twc2 = keyFrames[i + 1]->getPose().inverse();
+            camVelos[i] = (Twc2.t - Twc1.t) / delta_times[i];
+            transDeltaVelos[i] = (Twc1.R - Twc2.R) * tcb / delta_times[i];
+
+            if (i > 1 && (camVelos[i] - camVelos[i - 1]).norm() > (camVelos[maxIndex] - camVelos[maxIndex - 1]).norm()) {
+                maxIndex = i;
+            }
+
+            mapper_logger << "delta velo: " << deltaVelos[i] << ", delta pos velo: " << deltaPosVelos[i]
+                          << ", trans delta velo: " << transDeltaVelos[i] << ", cam velo: " << camVelos[i] << "\n";
+        }
+
+        Eigen::Vector3f maxDeltaCamVelo = camVelos[maxIndex] - camVelos[maxIndex - 1];
+        Eigen::Vector3f scaledDeltaVelo = deltaVelos[maxIndex - 1] - deltaPosVelos[maxIndex - 1] + deltaPosVelos[maxIndex]
+                - transDeltaVelos[maxIndex - 1] + transDeltaVelos[maxIndex];
+
+        double norm1 = maxDeltaCamVelo.norm(), norm2 = scaledDeltaVelo.norm();
+        double dot = maxDeltaCamVelo.transpose() * scaledDeltaVelo;
+        mapper_logger << titles[0] << "max delta cam velo: [" << maxDeltaCamVelo << "], norm " << norm1 << "\n";
+        mapper_logger << titles[0] << "scaled delta velo: [" << scaledDeltaVelo << "], norm " << norm2 << "\n";
+        mapper_logger << titles[0] << "their dot is " << dot << "\n";
+        if (norm2 > 0.1 && dot > 0.76 * norm1 * norm2) {
+            scale = dot / norm1 / norm1;
+
+            const auto &preIntegrator = keyFrames[maxIndex - 1]->pre_integrator;
+            Eigen::Vector3f veloError = scale * maxDeltaCamVelo - scaledDeltaVelo;
+            Eigen::Matrix3f jacobian = keyFrames[maxIndex - 1]->getImuPose().R * (preIntegrator->JVa - preIntegrator->JPa / delta_times[maxIndex - 1])
+                    + keyFrames[maxIndex]->getImuPose().R * (keyFrames[maxIndex]->pre_integrator->JPa / delta_times[maxIndex]);
+            Eigen::Vector3f delta_ba = jacobian.inverse() * veloError;
+            mapper_logger << titles[0] << "estimated delta acc bias: " << delta_ba << "\n";
+            if (delta_ba.norm() < 0.25) bias.ba += delta_ba;
+        } else return false;
+
+        // 4. estimated velocity
+        for (int i = 0; i < numKF - 1; ++i) {
+            Eigen::Vector3f velo = scale * camVelos[i] - deltaPosVelos[i] - transDeltaVelos[i];
+            keyFrames[i]->setVelocity(velo);
+            keyFrames[i]->setImuBias(bias);
+
+            if (i == numKF - 2) {
+                keyFrames[i + 1]->setVelocity(velo + deltaVelos[i]);
+                keyFrames[i + 1]->setImuBias(bias);
+            }
+        }
+
+        return true;
+    }
+
     void LocalMapping::initializeIMU(float prioriG, float prioriA, bool beFirst) {
         mapper_logger << "InitializeIMU\n";
         mapper_logger << titles[0] << "prioriG: " << prioriG << ", prioriA: " << prioriA << ", beFirst: " << beFirst
@@ -387,29 +484,17 @@ namespace mono_orb_slam3 {
 
         int numKF = (int) keyFrames.size();
 
-        Eigen::Matrix3d Rwg;
+        Eigen::Matrix3f Rwg;
+        float scale = 1.0;
         if (imu_state == NOT_INITIALIZE) {
-            Eigen::Vector3f gravityDir = Eigen::Vector3f::Zero();
-
-            for (int i = 0; i < numKF - 1; ++i) {
-                gravityDir -= keyFrames[i]->getImuPose().R * keyFrames[i]->pre_integrator->getUpdatedDeltaVelocity();
-                Eigen::Vector3f velo = (keyFrames[i + 1]->getCameraCenter() - keyFrames[i]->getCameraCenter()) /
-                                       keyFrames[i]->pre_integrator->delta_t;
-                keyFrames[i]->setVelocity(velo);
-                keyFrames[i + 1]->setVelocity(velo);
+            if (!imuInitEstimated(keyFrames, Rwg, scale)) {
+                system->Reset();
+                return;
             }
-
-            gravityDir.normalize();
-            Eigen::Vector3f gI(0, 0, -1);
-            Eigen::Vector3f v = gI.cross(gravityDir);
-            const float nv = v.norm();
-            const float theta = asin(nv);
-            Rwg = lie::ExpSO3f(theta * v / nv).cast<double>();
         } else {
             Rwg.setIdentity();
         }
 
-        double scale = 1.0;
         Eigen::Matrix3f Rwg_f = Rwg.cast<float>();
         mapper_logger << titles[0] << " - priori Rwg: " << Rwg_f << "\n";
         mapper_logger << titles[0] << " - priori scale: " << scale << "\n";
@@ -426,13 +511,12 @@ namespace mono_orb_slam3 {
 
         Optimize::inertialOptimize(point_map, Rwg, scale, prioriG, prioriA, beFirst);
 
-        Rwg_f = Rwg.cast<float>();
         mapper_logger << titles[0] << "after optimize: \n";
-        mapper_logger << titles[0] << " - posteriori Rwg: " << Rwg_f << "\n";
+        mapper_logger << titles[0] << " - posteriori Rwg: " << Rwg << "\n";
         mapper_logger << titles[0] << " - posteriori scale: " << scale << "\n";
         mapper_logger.flush();
 
-        if (scale < 1e-1) {
+        if (scale < 1e-2) {
             mapper_logger << titles[0] << "scale too small\n";
             imu_initializing = false;
             return;
@@ -441,7 +525,7 @@ namespace mono_orb_slam3 {
         {
             // changing the map
             lock_guard<mutex> lock(point_map->map_update_mutex);
-            point_map->applyScaleRotation(Rwg.cast<float>(), scale, beFirst);
+            point_map->applyScaleRotation(Rwg.cast<float>(), scale);
             tracker->updateFrameIMU();
         }
 
@@ -459,8 +543,10 @@ namespace mono_orb_slam3 {
         mapper_logger.flush();
 
         // full inertial BA
-        mapper_logger << titles[0] << "fullInertialOptimize\n";
-        Optimize::fullInertialOptimize(point_map, 100, beFirst, false, prioriG, prioriA);
+        if (beFirst) {
+            mapper_logger << titles[0] << "fullInertialOptimize\n";
+            Optimize::fullInertialOptimize(point_map, 100, beFirst, false, prioriG, prioriA);
+        }
 
         // process keyframes in the queue
         while (getNewKeyFrame()) {
@@ -468,13 +554,15 @@ namespace mono_orb_slam3 {
             keyFrames.push_back(current_kf);
         }
 
-        for (const auto &kf: keyFrames) {
-            mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
-            mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
-            mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
-            mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
+        if (beFirst) {
+            for (const auto &kf: keyFrames) {
+                mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
+                mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
+                mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
+                mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
+            }
+            mapper_logger.flush();
         }
-        mapper_logger.flush();
 
         imu_initializing = false;
         point_map->increaseChangeIdx();
@@ -493,7 +581,7 @@ namespace mono_orb_slam3 {
         {
             // changing the map
             lock_guard<mutex> lock(point_map->map_update_mutex);
-            point_map->applyScaleRotation(Rwg.cast<float>(), 1, false);
+            point_map->applyScaleRotation(Rwg.cast<float>(), 1);
             tracker->updateFrameIMU();
         }
 
@@ -538,7 +626,6 @@ namespace mono_orb_slam3 {
             }
             usleep(3000);
         }
-        imu_state = NOT_INITIALIZE;
     }
 
     bool LocalMapping::stop() {
@@ -650,6 +737,7 @@ namespace mono_orb_slam3 {
             new_keyframes.clear();
             recent_map_points.clear();
             reset_requested = false;
+            imu_state = NOT_INITIALIZE;
         }
     }
 

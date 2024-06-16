@@ -93,30 +93,20 @@ namespace mono_orb_slam3 {
         return {reference_map_points.begin(), reference_map_points.end()};
     }
 
-    void Map::applyScaleRotation(const Eigen::Matrix3f &Rwy, const float s, bool beFirst) {
+    void Map::applyScaleRotation(const Eigen::Matrix3f &Rwy, const float s) {
         Eigen::Matrix3f Ryw = Rwy.transpose();
 
         lock_guard<mutex> lock(map_mutex);
         for (const auto &kf: keyframes) {
             Pose Tcw = kf->getPose();
-            if (beFirst) {
-                kf->setPose(Tcw.R * Rwy, Tcw.t * s);
-            } else {
-                kf->setPose(Tcw.R * Rwy, Tcw.t);
-            }
+            kf->setPose(Tcw.R * Rwy, Tcw.t * s);
 
             Eigen::Vector3f Vw = kf->getVelocity();
-            if (beFirst) {
-                kf->setVelocity(Ryw * Vw * s);
-            } else {
-                kf->setVelocity(Ryw * Vw);
-            }
+            kf->setVelocity(Ryw * Vw);
         }
 
         for (const auto &mp: map_points) {
-            if (beFirst)
-                mp->setPos(Ryw * mp->getPos() * s);
-            else mp->setPos(Ryw * mp->getPos());
+            mp->setPos(Ryw * mp->getPos() * s);
             mp->update();
         }
 

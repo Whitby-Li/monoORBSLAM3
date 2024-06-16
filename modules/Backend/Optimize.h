@@ -24,7 +24,7 @@ namespace mono_orb_slam3 {
         static void
         initialOptimize(const std::shared_ptr<KeyFrame> &lastKeyFrame, const std::shared_ptr<KeyFrame> &curKeyFrame);
 
-        static void inertialOptimize(Map *pointMap, Eigen::Matrix3d &Rwg, double &scale, float prioriG, float prioriA, bool beFirst);
+        static void inertialOptimize(Map *pointMap, Eigen::Matrix3f &Rwg, float &scale, float prioriG, float prioriA, bool beFirst);
 
         static void gravityOptimize(Map *pointMap, Eigen::Matrix3d &Rwg);
 

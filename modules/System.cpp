@@ -52,7 +52,7 @@ namespace mono_orb_slam3 {
         tracker = new Tracking(fs["ORB"], point_map, this);
         tracking_state = tracker->state;
 
-        local_mapper = new LocalMapping(point_map);
+        local_mapper = new LocalMapping(this, point_map);
         local_mapping = new thread(&LocalMapping::Run, local_mapper);
 
         tracker->setLocalMapper(local_mapper);
@@ -88,7 +88,7 @@ namespace mono_orb_slam3 {
         // check reset
         {
             lock_guard<mutex> lock(reset_mutex);
-            if (be_reset) {
+            if (be_reset || (!local_mapper->finishImuInit() && imus.empty())) {
                 tracker->reset();
                 be_reset = false;
             }

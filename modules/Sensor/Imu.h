@@ -12,7 +12,7 @@
 #include <utility>
 
 namespace mono_orb_slam3 {
-    const float GRAVITY_VALUE = 9.79;
+    const float GRAVITY_VALUE = 9.80;
 
     /// Imu measurement (accelerometer and timestamp)
     struct ImuData {
