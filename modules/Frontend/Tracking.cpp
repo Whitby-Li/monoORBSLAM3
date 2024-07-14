@@ -86,7 +86,9 @@ namespace mono_orb_slam3 {
             }
 
         } else if (state != LOST) {
+#ifdef DEBUG
             tracker_logger.recordIter();
+#endif
             if (last_frame) last_frame->computePreIntegration(imus, timeStamp);
             if (last_kf) last_kf->computePreIntegration(imus, timeStamp);
 
@@ -128,12 +130,12 @@ namespace mono_orb_slam3 {
             } else {
                 if (have_velocity) isOK = trackLastFrame();
                 if (!isOK) isOK = trackReferenceKeyFrame();
-                tracker_logger.flush();
 
                 if (isOK) isOK = trackLocalMap();
             }
-
+#ifdef DEBUG
             tracker_logger.flush();
+#endif
 
             if (have_viewer) {
                 frame_drawer->Update(this);
@@ -160,27 +162,29 @@ namespace mono_orb_slam3 {
             if (needNewKeyFrame())
                 createNewKeyFrame();
 
-            tracker_logger.flush();
-            tracker_logger << "\n";
-
             last_frame = current_frame;
             const Pose Twr = reference_kf->getInversePose();
             Tlr = last_frame->T_cw * Twr;
         } else {
             cerr << "Track Lost, RESET" << endl;
-            tracker_logger << "track lost, reset system\n";
             system->Reset();
         }
 
+#ifdef DEBUG
+        tracker_logger.flush();
+        tracker_logger << "\n";
         Logger::iterate();
+#endif
     }
 
     void Tracking::updateFrameIMU() {
+#ifdef DEBUG
         tracker_logger << "\nupdateFrameIMU\n";
-        last_frame->pre_integrator->setNewBias(last_kf->pre_integrator->updated_bias);
-
-        tracker_logger << titles[0] << "last keyframe: " << last_kf->id << ", " << last_kf->getPose() << ", "
+        tracker_logger << titles[0] << "last keyframe: " << last_kf->id << ", " << last_kf->getImuPose() << ", "
                        << last_kf->getVelocity() << ", " << last_kf->pre_integrator->updated_bias << "\n";
+#endif
+
+        last_frame->pre_integrator->setNewBias(last_kf->pre_integrator->updated_bias);
 
         if (last_frame->id == last_kf->frame_id) {
             last_frame->setImuPoseAndVelocity(last_kf->getImuPose(), last_kf->getVelocity());
@@ -198,10 +202,12 @@ namespace mono_orb_slam3 {
             last_frame->setImuPoseAndVelocity({Rwb2, twb2}, v2);
         }
 
+#ifdef DEBUG
         tracker_logger << titles[0] << "last frame:\n";
-        tracker_logger << titles[1] << " - pose: " << last_frame->T_cw << "\n";
+        tracker_logger << titles[1] << " - pose: " << last_frame->T_wb << "\n";
         tracker_logger << titles[1] << " - velo: " << last_frame->v_w << "\n";
         tracker_logger << titles[1] << " - bias: " << last_frame->pre_integrator->updated_bias << "\n";
+#endif
 
         const Pose Twr = reference_kf->getInversePose();
         Tlr = last_frame->T_cw * Twr;
@@ -209,7 +215,9 @@ namespace mono_orb_slam3 {
     }
 
     void Tracking::predictCurFramePose() {
+#ifdef DEBUG
         tracker_logger << "predictCurFramePose\n";
+#endif
         shared_ptr<PreIntegrator> preIntegrator = last_frame->pre_integrator;
         const float dt = preIntegrator->delta_t;
         const Eigen::Vector3f g(0, 0, -GRAVITY_VALUE);
@@ -221,14 +229,18 @@ namespace mono_orb_slam3 {
 
         current_frame->setImuPoseAndVelocity({Rwb2, twb2}, v2);
 
+#ifdef DEBUG
         tracker_logger << titles[0] << "current frame:\n";
-        tracker_logger << titles[1] << " - pose: " << current_frame->T_cw << "\n";
+        tracker_logger << titles[1] << " - pose: " << current_frame->T_wb << "\n";
         tracker_logger << titles[1] << " - velo: " << current_frame->v_w << "\n";
         tracker_logger << titles[1] << " - bias: " << current_frame->pre_integrator->updated_bias << "\n";
+#endif
     }
 
     void Tracking::predictCurFramePoseByKF() {
+#ifdef DEBUG
         tracker_logger << "predictCurFramePoseByKF\n";
+#endif
         shared_ptr<PreIntegrator> preIntegrator = last_kf->pre_integrator;
         const float dt = preIntegrator->delta_t;
         const Eigen::Vector3f g(0, 0, -GRAVITY_VALUE);
@@ -240,27 +252,41 @@ namespace mono_orb_slam3 {
         Eigen::Vector3f v2 = v1 + g * dt + Twb1.R * preIntegrator->getUpdatedDeltaVelocity();
 
         current_frame->setImuPoseAndVelocity({Rwb2, twb2}, v2);
+
+#ifdef DEBUG
+        tracker_logger << titles[0] << "current frame:\n";
+        tracker_logger << titles[1] << " - pose: " << current_frame->T_wb << "\n";
+        tracker_logger << titles[1] << " - velo: " << current_frame->v_w << "\n";
+        tracker_logger << titles[1] << " - bias: " << current_frame->pre_integrator->updated_bias << "\n";
+#endif
     }
 
     void Tracking::updateLastFramePose() {
+#ifdef DEBUG
         tracker_logger << "updateLastFrame\n";
+#endif
         last_frame->setPose(Tlr * reference_kf->getPose());
-
+#ifdef DEBUG
         tracker_logger << titles[0] << "last frame:\n";
         tracker_logger << titles[1] << " - pose: " << last_frame->T_cw << "\n";
         tracker_logger << titles[1] << " - velo: " << last_frame->v_w << "\n";
         tracker_logger << titles[1] << " - bias: " << last_frame->pre_integrator->updated_bias << "\n";
+#endif
     }
 
     bool Tracking::trackReferenceKeyFrame() {
+#ifdef DEBUG
         tracker_logger << "trackReferenceKeyFrame\n";
+#endif
         // compute bag of worlds vector
         current_frame->computeBow();
 
         // we perform first an ORB matching with the reference keyframe
         ORBMatcher matcher(0.7, true);
         int numMatch = matcher.SearchByBow(reference_kf, current_frame);
+#ifdef DEBUG
         tracker_logger << titles[0] << "match " << numMatch << " map-points in reference_kf\n";
+#endif
 
         if (numMatch < 15) {
             cerr << "trackReferenceKeyFrame: not enough matches" << endl;
@@ -271,7 +297,9 @@ namespace mono_orb_slam3 {
 
         // optimize frame pose with all matches
         int numInlier = Optimize::poseOptimize(current_frame);
+#ifdef DEBUG
         tracker_logger << titles[0] << "after pose optimize, " << numInlier << " inlier match\n";
+#endif
 
         if (numInlier < 10) {
             cerr << "trackReferenceKeyFrame: not enough inlier matches" << endl;
@@ -282,18 +310,23 @@ namespace mono_orb_slam3 {
     }
 
     bool Tracking::trackLastFrame() {
+#ifdef DEBUG
         tracker_logger << "trackLastFrame\n";
+#endif
 
         float th = 15;
         ORBMatcher matcher(0.9, true);
         int numMatch = matcher.SearchByProjection(last_frame, current_frame, th);
+#ifdef DEBUG
         tracker_logger << titles[0] << "match " << numMatch << " map-points in last frame\n";
+#endif
 
         if (numMatch < 30) {
-            tracker_logger << titles[0] << "matches not enough, expand search radius, ";
             fill(current_frame->map_points.begin(), current_frame->map_points.end(), nullptr);
             numMatch = matcher.SearchByProjection(last_frame, current_frame, 2 * th);
-            tracker_logger << titles[0] << "match " << numMatch << " map-points in last frame\n";
+#ifdef DEBUG
+            tracker_logger << titles[0] << "matches not enough, expand search radius, match" << numMatch << " map-points in last frame\n";
+#endif
         }
 
         if (numMatch < 30) {
@@ -305,7 +338,9 @@ namespace mono_orb_slam3 {
 
         // optimize frame pose with all matches
         num_inlier = Optimize::poseOptimize(current_frame);
+#ifdef DEBUG
         tracker_logger << titles[0] << "after pose optimize, " << num_inlier << " inlier match\n";
+#endif
 
         if (num_inlier < 15) {
             cerr << "trackLastFrame: not enough inlier matches" << endl;
@@ -316,18 +351,23 @@ namespace mono_orb_slam3 {
     }
 
     bool Tracking::trackLastKeyFrame() {
+#ifdef DEBUG
         tracker_logger << "trackLastKeyFrame\n";
+#endif
 
         float th = 15;
         ORBMatcher matcher(0.9, true);
         int numMatch = matcher.SearchByProjection(last_kf, current_frame, th);
+#ifdef DEBUG
         tracker_logger << titles[0] << "match " << numMatch << " map-points in last frame\n";
+#endif
 
         if (numMatch < 30) {
-            tracker_logger << titles[0] << "matches not enough, expand search radius, ";
             fill(current_frame->map_points.begin(), current_frame->map_points.end(), nullptr);
             numMatch = matcher.SearchByProjection(last_kf, current_frame, 2 * th);
-            tracker_logger << titles[0] << "match " << numMatch << " map-points in last frame\n";
+#ifdef DEBUG
+            tracker_logger << titles[0] << "matches not enough, expand search radius, match" << numMatch << " map-points in last frame\n";
+#endif
         }
 
         if (numMatch < 30) {
@@ -347,9 +387,10 @@ namespace mono_orb_slam3 {
     }
 
     bool Tracking::trackLocalMap() {
+#ifdef DEBUG
         tracker_logger << "TrackLocalMap\n";
+#endif
         updateLocalMap();
-        tracker_logger.flush();
 
         // search local map-points
         searchLocalPoints();
@@ -361,7 +402,10 @@ namespace mono_orb_slam3 {
             if (local_mapper->isImuInitialized())
                 Optimize::poseInertialOptimize(last_kf, current_frame);
         }
+#ifdef DEBUG
+        tracker_logger.flush();
         tracker_logger << titles[0] << "after pose optimize, " << num_inlier << " inlier match\n";
+#endif
 
         for (const auto &mp: current_frame->map_points) {
             if (mp != nullptr) mp->increaseFound();
@@ -383,8 +427,10 @@ namespace mono_orb_slam3 {
         // update
         updateLocalKeyFrames();
         updateLocalMapPoints();
+#ifdef DEBUG
         tracker_logger << titles[0] << "there are " << local_keyframes.size() << " local keyframes, "
                        << local_map_points.size() << " local map points\n";
+#endif
     }
 
     void Tracking::searchLocalPoints() {
@@ -424,9 +470,10 @@ namespace mono_orb_slam3 {
                 th = 10;
             }
 
-            tracker_logger << titles[0] << outView << " out view, " << numToMatch << " ready to match\n";
             int numMatch = matcher.SearchByProjection(current_frame, local_map_points, th);
-            tracker_logger << titles[0] << "match " << numMatch << "\n";
+#ifdef DEBUG
+            tracker_logger << titles[0] << outView << " out view, " << numToMatch << " ready to match, and match " << numMatch << "\n";
+#endif
         }
     }
 
@@ -541,7 +588,9 @@ namespace mono_orb_slam3 {
     }
 
     bool Tracking::needNewKeyFrame() {
+#ifdef DEBUG
         tracker_logger << "needNewKeyFrame\n";
+#endif
         if (local_mapper->isStopped() || local_mapper->stopRequested()) return false;
 
         bool beMapperIdle = local_mapper->acceptKeyFrames();
@@ -549,7 +598,7 @@ namespace mono_orb_slam3 {
         int numRefMatch = reference_kf->getNumTrackedMapPoint(minObs);
         float theRefRatio = 0.9;
         if (num_inlier > 350) theRefRatio = 0.75;
-
+#ifdef DEBUG
         tracker_logger << titles[0] << "reference_kf (id = " << reference_kf->id << ") tracked " << numRefMatch
                        << " good map-points\n";
         if (beMapperIdle) {
@@ -557,6 +606,7 @@ namespace mono_orb_slam3 {
         } else {
             tracker_logger << titles[0] << "local mapper is busy\n";
         }
+#endif
 
         // condition
         bool c1a = current_frame->id >= last_kf->frame_id + 10;
@@ -567,11 +617,15 @@ namespace mono_orb_slam3 {
 
         if (((c1a || c1b) && c2) || c3 || c4) {
             if (beMapperIdle || local_mapper->isInitializing()) {
+#ifdef DEBUG
                 tracker_logger << "insert a new keyframe\n";
+#endif
                 return true;
             } else {
                 local_mapper->interruptBA();
+#ifdef DEBUG
                 tracker_logger << "interrupt BA\n";
+#endif
                 return false;
             }
         }
@@ -592,24 +646,28 @@ namespace mono_orb_slam3 {
     }
 
     void Tracking::Initialization() {
+#ifdef DEBUG
         initial_logger.recordIter();
-
         initial_logger << "extractor " << current_frame->num_kps << " orb features\n";
+#endif
 
         if (current_frame->num_kps > 500) {
             if (last_frame == nullptr || current_frame->timestamp - last_frame->timestamp > 1) {
+#ifdef DEBUG
                 initial_logger << "set first frame (id " << current_frame->id << ")\n";
+#endif
                 priori_matches.resize(current_frame->num_kps);
                 for (int i = 0; i < current_frame->num_kps; ++i)
                     priori_matches[i] = current_frame->key_points[i].pt;
 
                 last_frame = current_frame;
             } else {
-                initial_logger << "have second frame (id " << current_frame->id << "), match to the first, ";
                 ORBMatcher matcher(0.9, true);
                 int numMatches = matcher.SearchForInitialization(last_frame, current_frame, priori_matches,
                                                                  initial_matches, 100);
-                initial_logger << "matches " << numMatches << "\n";
+#ifdef DEBUG
+                initial_logger << "have second frame (id " << current_frame->id << "), match to the first, and matches " << numMatches << "\n";
+#endif
 
                 if (numMatches < 200) {
                     last_frame = nullptr;
@@ -617,12 +675,11 @@ namespace mono_orb_slam3 {
                     return;
                 }
 
-                initial_logger << "try to triangulate: \n";
                 Eigen::Matrix3f R21;
                 Eigen::Vector3f t21;
                 vector<bool> vbTriangulated;
                 if (camera_ptr->reconstructWithTwoViews(last_frame->key_points, current_frame->key_points,
-                                                       initial_matches, R21, t21, initial_3d_points, vbTriangulated)) {
+                                                        initial_matches, R21, t21, initial_3d_points, vbTriangulated)) {
                     for (size_t i = 0, end = initial_matches.size(); i < end; ++i) {
                         if (initial_matches[i] >= 0 && !vbTriangulated[i]) {
                             initial_matches[i] = -1;
@@ -643,8 +700,9 @@ namespace mono_orb_slam3 {
             last_frame = nullptr;
             priori_matches.clear();
         }
-
+#ifdef DEBUG
         initial_logger << "\n";
+#endif
     }
 
     void Tracking::CreateInitialMap() {
@@ -673,32 +731,37 @@ namespace mono_orb_slam3 {
 
         point_map->addKeyFrame(iniKF);
         point_map->addKeyFrame(curKF);
-
+#ifdef DEBUG
         initial_logger << "before visual initial optimize:\n";
         initial_logger << " - pose: " << curKF->getPose() << "\n";
+#endif
 
         // initial optimize
         Optimize::initialOptimize(iniKF, curKF);
-
+#ifdef DEBUG
         initial_logger << "after visual initial optimize: \n";
         initial_logger << " - pose: " << curKF->getPose() << "\n";
-
+#endif
         float medianDepth = curKF->computeSceneMedianDepth();
         float invMedianDepth = 1.f / medianDepth;
-        initial_logger << "scale factor: " << invMedianDepth << "\n";
 
         Pose Tc2w = curKF->getPose();
         Tc2w.t = Tc2w.t * invMedianDepth;
         curKF->setPose(Tc2w.R, Tc2w.t);
+#ifdef DEBUG
+        initial_logger << "scale factor: " << invMedianDepth << "\n";
         initial_logger << titles[0] << " - scale pose: " << curKF->getPose();
+        initial_logger << titles[0] << " - scale points: \n";
+#endif
 
         // update map-points
-        initial_logger << titles[0] << " - scale points: \n";
         vector<shared_ptr<MapPoint>> mapPoints = curKF->getTrackedMapPoints();
         for (auto &mp: mapPoints) {
             mp->setPos(mp->getPos() * invMedianDepth);
             mp->update();
+#ifdef DEBUG
             initial_logger << titles[1] << mp->getPos() << " | " << mp->getMaxDistanceInvariance() << "\n";
+#endif
         }
 
         curKF->updateConnections();

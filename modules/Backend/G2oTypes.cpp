@@ -159,6 +159,58 @@ namespace mono_orb_slam3 {
         _jacobianOplus[5].block<3, 1>(6, 0) = scale * Rb1w * (Oc2 - Oc1);
     }
 
+    EdgeGS::EdgeGS(const std::shared_ptr<KeyFrame> &kf1, const std::shared_ptr<KeyFrame> &kf2) {
+        gI << 0, 0, -GRAVITY_VALUE;
+        auto &preIntegrator = kf1->pre_integrator;
+        dt = preIntegrator->delta_t;
+
+        Pose Twb1 = kf1->getImuPose();
+        Pose Tc1w = kf1->getPose(), Tc2w = kf2->getPose();
+        Eigen::Vector3f v1 = kf1->getVelocity(), v2 = kf2->getVelocity();
+        Eigen::Vector3d tcb = ImuCalib::getImuCalib()->t_cb;
+
+        deltaVelo = (v2 - v1 - Twb1.R * preIntegrator->getUpdatedDeltaVelocity()).cast<double>();
+        camDeltaPos = (-Tc2w.R.transpose() * Tc2w.t + Tc1w.R.transpose() * Tc1w.t).cast<double>();
+        bodyDeltaPos = (Tc1w.R.transpose() - Tc2w.R.transpose()).cast<double>() * tcb;
+        deltaPos = (v1 * dt + Twb1.R * preIntegrator->getUpdatedDeltaPosition()).cast<double>();
+
+        Eigen::Matrix<double, 6, 6> info = preIntegrator->C.block<6, 6>(3, 3).cast<double>().inverse();
+        info = (info + info.transpose()) / 2;
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 6, 6>> eigenSolver(info);
+        Eigen::Matrix<double, 6, 1> eigenValues = eigenSolver.eigenvalues();
+        for (int i = 0; i < 6; ++i)
+            if (eigenValues[i] < 1e-12) eigenValues[i] = 0;
+        info = eigenSolver.eigenvectors() * eigenValues.asDiagonal() * eigenSolver.eigenvectors().transpose();
+        setInformation(info);
+    }
+
+    void EdgeGS::computeError() {
+        const auto gDir = dynamic_cast<const VertexGravity *>(_vertices[0])->estimate();
+        const auto scale = dynamic_cast<const VertexScale *>(_vertices[1])->estimate();
+
+        g = gDir.R_wg * gI;
+        const Eigen::Vector3d ev = deltaVelo - g * dt;
+        const Eigen::Vector3d ep = scale * camDeltaPos + bodyDeltaPos - 0.5 * g * dt * dt - deltaPos;
+        _error << ev, ep;
+    }
+
+    void EdgeGS::linearizeOplus() {
+        const auto gDir = dynamic_cast<const VertexGravity *>(_vertices[0])->estimate();
+        const auto scale = dynamic_cast<const VertexScale *>(_vertices[1])->estimate();
+
+        Eigen::MatrixXd gm = Eigen::MatrixXd::Zero(3, 2);
+        gm(0, 1) = -GRAVITY_VALUE, gm(1, 0) = GRAVITY_VALUE;
+        const Eigen::MatrixXd JGdTheta = gDir.R_wg * gm;
+
+        // jacobian wrt gravity direction
+        _jacobianOplusXi.setZero();
+        _jacobianOplusXi.block<3, 2>(0, 0) = -JGdTheta * dt;
+        _jacobianOplusXi.block<3, 2>(3, 0) = -0.5 * JGdTheta * dt * dt;
+
+        _jacobianOplusXj.setZero();
+        _jacobianOplusXj.block<3, 1>(3, 0) = scale * camDeltaPos;
+    }
+
     EdgeInertialG::EdgeInertialG(const CameraImuPose &pose1, const CameraImuPose &pose2,
                                  const std::shared_ptr<PreIntegrator> &preIntegrator)
             : Rb1w(pose1.R_wb.transpose()), Rwb2(pose2.R_wb), twb1(pose1.t_wb), twb2(pose2.t_wb),

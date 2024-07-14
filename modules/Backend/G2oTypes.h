@@ -389,6 +389,24 @@ namespace mono_orb_slam3 {
     };
 
     /// gravity edge
+    class EdgeGS : public g2o::BaseBinaryEdge<6, Vector6d, VertexGravity, VertexScale> {
+    public:
+        EdgeGS(const std::shared_ptr<KeyFrame> &kf1, const std::shared_ptr<KeyFrame> &kf2);
+
+        bool read(std::istream &is) override { return true; }
+
+        bool write(std::ostream &os) const override { return true; }
+
+        void computeError() override;
+
+        void linearizeOplus() override;
+        double dt;
+        Eigen::Vector3d g, gI;
+        Eigen::Vector3d deltaVelo;
+        Eigen::Vector3d camDeltaPos, bodyDeltaPos, deltaPos;
+    };
+
+    /// gravity edge
     class EdgeGravity : public g2o::BaseUnaryEdge<6, Vector6d, VertexGravity> {
     public:
         EdgeGravity(const std::shared_ptr<KeyFrame> &kf1, const std::shared_ptr<KeyFrame> &kf2);

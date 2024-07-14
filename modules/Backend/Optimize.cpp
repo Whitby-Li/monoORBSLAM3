@@ -5,7 +5,6 @@
 #include "Optimize.h"
 #include "G2oTypes.h"
 #include "Sensor/Camera.h"
-#include "Log/Logger.h"
 
 #include <g2o/core/optimization_algorithm_levenberg.h>
 #include <g2o/core/robust_kernel_impl.h>
@@ -585,7 +584,7 @@ namespace mono_orb_slam3 {
 
         // 4. optimize
         optimizer.initializeOptimization();
-        optimizer.optimize(10);
+        optimizer.optimize(20);
 
         // 5. recover
         Bias newBias(vGyroBias1->estimate().cast<float>(), vAccBias1->estimate().cast<float>());
@@ -731,6 +730,8 @@ namespace mono_orb_slam3 {
         // 4. recover
         const CameraImuPose optimizePose = vPose2->estimate();
         Bias newBias(vGyroBias1->estimate().cast<float>(), vAccBias1->estimate().cast<float>());
+        lastKF->setVelocity(vVelo1->estimate().cast<float>());
+        lastKF->setImuBias(newBias);
 
         frame->setPose({optimizePose.R_cw.cast<float>(), optimizePose.t_cw.cast<float>()});
         frame->v_w = vVelo2->estimate().cast<float>();
@@ -793,10 +794,6 @@ namespace mono_orb_slam3 {
                 if (kf->isBad()) cerr << "map-point observe bad kf" << endl;
             }
         }
-
-        mapper_logger << titles[0] << "there are " << localKeyFrames.size() << " local keyframes, "
-                      << fixedKeyFrames.size() << " fixed keyframes, " << localMapPoints.size()
-                      << " local map-points\n";
 
         // 2. set optimizer
         g2o::SparseOptimizer optimizer;
@@ -941,7 +938,6 @@ namespace mono_orb_slam3 {
 
     void Optimize::localInertialBundleAdjustment(const std::shared_ptr<KeyFrame> &keyFrame, Map *pointMap,
                                                  bool beLarge) {
-        mapper_logger << "localInertialBundleAdjustment\n";
 
         // 1. get optimizable keyframes, fixed keyframes and map-points
         int maxOpt = 10, iterations = 10;
@@ -954,14 +950,6 @@ namespace mono_orb_slam3 {
         const unsigned int maxKFId = keyFrame->id;
 
         vector<shared_ptr<KeyFrame>> optimizeKeyFrames = pointMap->getRecentKeyFrames(numOpt);
-
-        mapper_logger << "Initial Pose\n";
-        for (const auto &kf: optimizeKeyFrames) {
-            mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
-            mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
-            mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
-            mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
-        }
 
         // 2. set up optimizer
         g2o::SparseOptimizer optimizer;
@@ -1040,14 +1028,6 @@ namespace mono_orb_slam3 {
             newBias.ba = dynamic_cast<Vertex3D *>(optimizer.vertex(maxKFId + 3 * kf->id + 3))->estimate().cast<float>();
             kf->setImuBias(newBias);
         }
-
-        mapper_logger << "After inertial optimize\n";
-        for (const auto &kf: optimizeKeyFrames) {
-            mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
-            mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
-            mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
-            mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
-        }
     }
 
     void Optimize::localFullBundleAdjustment(const std::shared_ptr<KeyFrame> &keyFrame, Map *pointMap, bool beLarge,
@@ -1096,10 +1076,6 @@ namespace mono_orb_slam3 {
             if (fixedKeyFrames.size() >= maxNumFixed) break;
         }
 
-        mapper_logger << titles[0] << "there are " << optimizeKeyFrames.size() << " local keyframes, "
-                      << fixedKeyFrames.size()
-                      << " fixed keyframes, " << localMapPoints.size() << " local map-points\n";
-
         // 2. set up optimizer
         g2o::SparseOptimizer optimizer;
         auto *solver = new g2o::OptimizationAlgorithmLevenberg(
@@ -1124,19 +1100,23 @@ namespace mono_orb_slam3 {
 
             auto *vPose1 = new VertexPose({kf->getPose(), kf->getImuPose()});
             vPose1->setId(kf->id);
+            vPose1->setFixed(i == 0);
             optimizer.addVertex(vPose1);
 
             auto *vVelo1 = new Vertex3D(kf->getVelocity());
             vVelo1->setId(maxKFId + 3 * kf->id + 1);
+            vVelo1->setFixed(i == 0);
             optimizer.addVertex(vVelo1);
 
             const Bias bias = kf->pre_integrator->updated_bias;
             auto *vGyroBias1 = new Vertex3D(bias.bg);
             vGyroBias1->setId(maxKFId + 3 * kf->id + 2);
+            vGyroBias1->setFixed(i == 0);
             optimizer.addVertex(vGyroBias1);
 
             auto *vAccBias1 = new Vertex3D(bias.ba);
             vAccBias1->setId(maxKFId + 3 * kf->id + 3);
+            vAccBias1->setFixed(i == 0);
             optimizer.addVertex(vAccBias1);
 
             if (i < numOpt - 1) {
@@ -1160,23 +1140,6 @@ namespace mono_orb_slam3 {
                 eAccWalk->setVertex(1, vAccBias2);
                 eAccWalk->setInformation(kf->pre_integrator->C.block<3, 3>(12, 12).cast<double>().inverse());
                 optimizer.addEdge(eAccWalk);
-            }
-
-            if (i == 0) {
-                auto *eVeloPriori = new EdgePriori3D(kf->velo_priori);
-                eVeloPriori->setVertex(0, vVelo1);
-                eVeloPriori->setInformation(kf->velo_info.cast<double>());
-                optimizer.addEdge(eVeloPriori);
-
-                auto *eGyroPriori = new EdgePriori3D(kf->bias_priori.bg);
-                eGyroPriori->setVertex(0, vGyroBias1);
-                eGyroPriori->setInformation(kf->gyro_info.cast<double>());
-                optimizer.addEdge(eGyroPriori);
-
-                auto *eAccPriori = new EdgePriori3D(kf->bias_priori.ba);
-                eAccPriori->setVertex(0, vAccBias1);
-                eAccPriori->setInformation(kf->gyro_info.cast<double>());
-                optimizer.addEdge(eAccPriori);
             }
 
             vPose2 = vPose1;

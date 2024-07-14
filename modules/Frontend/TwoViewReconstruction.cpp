@@ -73,8 +73,9 @@ namespace mono_orb_slam3 {
         if (SH + SF == 0.f) return false;
         float RH = SH / (SH + SF);
         float minParallax = 1.f;
-
+#ifdef DEBUG
         initial_logger << titles[0] << "launch two thread to compute F and H in parallel, RH = " << RH << "\n";
+#endif
 
         if (RH > 0.5) {
             return ReconstructH(H, beInlierMatchesH, R21, t21, points3D, vecBeTriangulated, minParallax);
@@ -351,9 +352,10 @@ namespace mono_orb_slam3 {
         for (auto beInlier: beInlierMatches)
             if (beInlier) nInlier++;
         int minGood = min(cvRound(0.6 * nInlier), 100);
-
+#ifdef DEBUG
         initial_logger << titles[0] << "ReconstructH: " << nInlier << " inlier matches, minGood = " << minGood
                        << ", minParallax = " << minParallax << "\n";
+#endif
 
         // we recover 8 motion hypotheses using the method of Faugeras et al.
         // motion and structure from motion in a piecewise planar environment.
@@ -434,9 +436,9 @@ namespace mono_orb_slam3 {
             if (n(2) < 0) n = -n;
             vn.push_back(n);
         }
-
+#ifdef DEBUG
         initial_logger << titles[0] << "compute 8 pose hypotheses, check them: \n";
-
+#endif
         int bestGood = 0, secondBestGood = -1;
         int bestIdx = -1;
         float bestParallax = -1;
@@ -469,8 +471,9 @@ namespace mono_orb_slam3 {
             points3D = bestPoints3D;
             return true;
         }
-
+#ifdef DEBUG
         initial_logger << titles[0] << "reconstruct fail\n";
+#endif
         return false;
     }
 
@@ -482,10 +485,10 @@ namespace mono_orb_slam3 {
         for (auto beInlier: beInlierMatches)
             if (beInlier) nInlier++;
         int minGood = min(cvFloor(0.6 * nInlier), 100);
-
+#ifdef DEBUG
         initial_logger << titles[0] << "ReconstructF: " << nInlier << " inlier matches, minGood = " << minGood
                        << ", minParallax = " << minParallax << "\n";
-
+#endif
         // compute essential matrix from F
         Eigen::Matrix3f E21 = K.transpose() * F21 * K;
         Eigen::Matrix3f R1, R2;
@@ -495,8 +498,9 @@ namespace mono_orb_slam3 {
         DecomposeE(E21, R1, R2, t);
         Eigen::Vector3f t1 = t;
         Eigen::Vector3f t2 = -t;
-
+#ifdef DEBUG
         initial_logger << titles[0] << "compute 4 pose hypotheses, check them: \n";
+#endif
         // reconstruct with 4 hypotheses and check
         vector<cv::Point3f> points3D1, points3D2, points3D3, points3D4;
         vector<bool> vbTriangulated1, vbTriangulated2, vbTriangulated3, vbTriangulated4;
@@ -550,8 +554,9 @@ namespace mono_orb_slam3 {
                 return true;
             }
         }
-
+#ifdef DEBUG
         initial_logger << titles[0] << "reconstruct fail\n";
+#endif
         return false;
     }
 
@@ -681,8 +686,9 @@ namespace mono_orb_slam3 {
             int idx = min(50, (int) vecCosParallax.size() - 1);
             parallax = acosf(vecCosParallax[idx]) * 180 / M_PIf32;
         } else parallax = 0;
-
+#ifdef DEBUG
         initial_logger << titles[0] << " -have " << nGood << " good matches, parallax = " << parallax << "\n";
+#endif
         return nGood;
     }
 

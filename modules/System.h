@@ -10,6 +10,7 @@
 #include "View/Viewer.h"
 
 #include <string>
+#include <fstream>
 #include <opencv2/core/core.hpp>
 #include <Eigen/Core>
 #include <thread>
@@ -39,8 +40,6 @@ namespace mono_orb_slam3 {
         void ShutDown();
 
         void saveKeyFrameTrajectory();
-
-        void saveKeyFrameVelocityAndBias();
 
         void savePointCloudMap();
 
@@ -78,6 +77,7 @@ namespace mono_orb_slam3 {
 
         /* Save Folder */
         std::string save_folder;
+        std::ofstream trajectory_out;
     };
 
 } // mono_orb_slam3

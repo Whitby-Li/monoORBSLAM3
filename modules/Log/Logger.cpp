@@ -8,6 +8,7 @@
 using namespace std;
 
 namespace mono_orb_slam3 {
+#ifdef DEBUG
     string const titles[3] = {"  ", "    ", "      "};
     const string PROJECT_PATH = "/home/whitby/Development/CLionProjects/slam/mono_orb_slam3";
     const string log_folder = PROJECT_PATH + "/logs";
@@ -15,6 +16,7 @@ namespace mono_orb_slam3 {
     Logger initial_logger(log_folder + "/initial_log.txt");
     Logger mapper_logger(log_folder + "/mapper_log.txt");
     Logger tracker_logger(log_folder + "/tracker_log.txt");
+#endif
 
     int Logger::iter = 0;
     mutex Logger::iter_mutex;
@@ -30,6 +32,11 @@ namespace mono_orb_slam3 {
     void Logger::recordIter() {
         std::unique_lock<std::mutex> lock(iter_mutex);
         lout << "iter: " << iter << "\n";
+    }
+
+    void Logger::setNewPath(const std::string &filename) {
+        lout.close();
+        lout.open(filename, std::ios::out | std::ios::trunc);
     }
 
     Logger &Logger::operator<<(int x) {

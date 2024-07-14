@@ -78,7 +78,6 @@ int main(int argc, char *argv[]) {
 
     // 4. shutdown SLAM system, and save trajectory and others
     SLAM.ShutDown();
-    /*SLAM.saveKeyFrameTrajectory();
-    SLAM.saveKeyFrameVelocityAndBias();*/
+    SLAM.saveKeyFrameTrajectory();
     return 0;
 }

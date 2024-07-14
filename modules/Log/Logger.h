@@ -10,6 +10,8 @@
 #include <fstream>
 #include <mutex>
 
+#define DEBUG
+
 namespace mono_orb_slam3 {
     
     struct Pose;
@@ -23,6 +25,8 @@ namespace mono_orb_slam3 {
         void flush();
 
         void recordIter();
+
+        void setNewPath(const std::string &filename);
 
         Logger &operator<<(int x);
 
@@ -53,6 +57,7 @@ namespace mono_orb_slam3 {
         static std::mutex iter_mutex;
     };
 
+#ifdef DEBUG
     extern const std::string titles[3];
     extern const std::string PROJECT_PATH;
     extern const std::string log_folder;
@@ -60,6 +65,7 @@ namespace mono_orb_slam3 {
     extern Logger initial_logger;
     extern Logger mapper_logger;
     extern Logger tracker_logger;
+#endif
 
 } // mono_orb_slam3
 

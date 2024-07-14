@@ -77,9 +77,6 @@ add_executable(initialize_test test/Frontend/initializeTest.cpp)
 add_executable(tracking_test test/Frontend/trackingTest.cpp)
 
 # SLAM Demo
-add_executable(euroc_demo test/eurocDemo.cpp)
+add_executable(demo test/demo.cpp)
 add_executable(kitti_demo test/kittiDemo.cpp)
 add_executable(phone_demo test/phoneDemo.cpp)
-add_executable(ntu_demo test/ntuDemo.cpp)
-add_executable(rect_demo test/rectDemo.cpp)
-add_executable(demo test/demo.cpp)
