@@ -10,6 +10,7 @@
 #include "View/Viewer.h"
 
 #include <string>
+#include <fstream>
 #include <opencv2/core/core.hpp>
 #include <Eigen/Core>
 #include <thread>
@@ -28,7 +29,7 @@ namespace mono_orb_slam3 {
 
     class System {
     public:
-        System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer = false);
+        System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer = false, bool recordViewer = false);
 
         ~System();
 
@@ -38,15 +39,19 @@ namespace mono_orb_slam3 {
 
         void ShutDown();
 
-        void saveKeyFrameTrajectory(const std::string &fileName);
+        void saveKeyFrameTrajectory();
 
-        void saveKeyFrameVelocityAndBias(const std::string &fileName);
+        void savePointCloudMap();
 
-        void savePointCloudMap(const std::string &fileName);
-
-        void saveKeyFrameDepth(const std::string &fileName);
+        void saveKeyFrameDepth();
 
         int getTrackingState();
+
+        void setSaveFolder(const std::string &path);
+
+        std::string getSaveFolder() {
+            return save_folder;
+        }
 
     private:
         /* Map */
@@ -69,6 +74,10 @@ namespace mono_orb_slam3 {
 
         bool be_reset;
         std::mutex reset_mutex;
+
+        /* Save Folder */
+        std::string save_folder;
+        std::ofstream trajectory_out;
     };
 
 } // mono_orb_slam3

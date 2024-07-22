@@ -1,47 +1,48 @@
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-sequence = 'tnp_01'
-folder = '/home/whitby/Development/CLionProjects/slam/mono_orb_slam3/results/aligned'
-
-
 if __name__ == '__main__':
-    truth_path = '/datasets/ntu_viral/'+ sequence + '/truth_pos.txt'
-    compare_path = folder + '/old_ntu_viral_' + sequence + '.txt'
-    test_path = folder + '/ntu_viral_' + sequence + '.txt'
+    parser = argparse.ArgumentParser(description='''This script plot trajectories''')
+    parser.add_argument(
+        'triplets',
+        metavar='triplet',
+        type=str,
+        nargs='+',
+        help="Triplets of trajectory file, color, name"
+    )
 
-    # truth_path = '/datasets/kitti/'+ sequence[0:10] + '/' + sequence[0:11] + 'drive_' + sequence[11:] + '_extract/oxts/full_pos.txt'
-    # compare_path = folder + '/mono_kitti_' + sequence + '.txt'
-    # test_path = folder + '/kitti_' + sequence + '.txt'
+    parser.add_argument(
+        '--graph_name',
+        type=str,
+        required=True,
+        help='name of result graph.'
+    )
 
-    truth_trajectory = np.loadtxt(truth_path, dtype=float)
-    compare_trajectory = np.loadtxt(compare_path, dtype=float)
-    test_trajectory = np.loadtxt(test_path, dtype=float)
+    parser.add_argument(
+        '--output_dir',
+        type=str,
+        required=True,
+        help='the directory where graph will be saved.'
+    )
 
-    print(truth_trajectory.shape, compare_trajectory.shape, test_trajectory.shape)
+    args = parser.parse_args()
+    if len(args.triplets) % 3 != 0:
+        parser.error("You must provide triples of [trajectory, color, name]")
 
-    # plot trajectories
+    triplets = [(args.triplets[i], args.triplets[i + 1], args.triplets[i + 2]) for i in range(0, len(args.triplets), 3)]
 
-    # truth
-    plt.plot(truth_trajectory[:, 1], truth_trajectory[:, 2], color='red', linestyle='-', label='Truth')
-
-    # compare
-    plt.plot(compare_trajectory[:, 0], compare_trajectory[:, 1], color='green', linestyle='-', label='ORB-SLAM3')
-    # plt.plot(compare_trajectory[:, 0], compare_trajectory[:, 1], color='green', marker='o', markersize=3)
-    # plt.scatter(compare_trajectory[0, 0], compare_trajectory[0, 1], color='green', marker='o', label='ORB-SLAM3 Start')
-    # plt.scatter(compare_trajectory[-1, 0], compare_trajectory[-1, 1], color='green', marker='*', label='ORB-SLAM3 End')
-
-    # test
-    plt.plot(test_trajectory[:, 0], test_trajectory[:, 1], color='blue', linestyle='-', label='Ours')
-    # plt.plot(test_trajectory[:, 0], test_trajectory[:, 1], color='blue', marker='o', markersize=3)
-    # plt.scatter(test_trajectory[0, 0], test_trajectory[0, 1], color='blue', marker='o', label='Ours Start')
-    # plt.scatter(test_trajectory[-1, 0], test_trajectory[-1, 1], color='blue', marker='*', label='Ours End')
+    for triple in triplets:
+        trajectory = np.loadtxt(triple[0], dtype=float)
+        color = triple[1]
+        name = triple[2]
+        plt.plot(trajectory[:, 1], trajectory[:, 2], color=color, linestyle='-', label=name)
 
     # 设置两轴尺度一致
     plt.axis('equal')  # 或者可以使用 plt.gca().set_aspect('equal')
 
     # 添加标题和标签
-    plt.title(sequence + ' Trajectories')
+    plt.title(args.graph_name)
     plt.xlabel('X-axis')
     plt.ylabel('Y-axis')
 
@@ -50,5 +51,5 @@ if __name__ == '__main__':
 
     # 显示图形
     # plt.show()
-    plt.savefig('../results/imgs/' + sequence + '.png')
+    plt.savefig(args.output_dir + "/" + args.graph_name + '.png')
 

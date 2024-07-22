@@ -8,7 +8,6 @@
 #include "Backend/Optimize.h"
 #include "TwoViewReconstruction.h"
 #include "Utils/LieAlgeBra.h"
-#include "Log/Logger.h"
 
 #include <unistd.h>
 
@@ -23,21 +22,15 @@ namespace mono_orb_slam3 {
             setAcceptKeyFrame(false);
 
             if (getNewKeyFrame()) {
-                mapper_logger.recordIter();
-
                 // process new keyframe
                 processNewKeyFrame();
 
                 // check recent map-points
                 MapPointCulling();
-                mapper_logger.flush();
 
-                mapper_logger << "have a new keyframe (id " << current_kf->id << ")\n";
                 createNewMapPoints();
-                mapper_logger.flush();
 
                 searchInNeighbors();
-                mapper_logger.flush();
 
                 abort_BA = false;
 
@@ -50,27 +43,22 @@ namespace mono_orb_slam3 {
                         } else {
                             Optimize::localBundleAdjustment(current_kf, point_map, &abort_BA);
                         }
-                        mapper_logger.flush();
                     }
 
                     // initialize imu here
-                    if (imu_state == NOT_INITIALIZE && current_kf->id > 15) {
-                        mapper_logger << "try to initialize imu\n";
-                        initializeIMU(1e+6, 1e+12, true);
+                    if (imu_state == NOT_INITIALIZE && point_map->getNumKeyFrames() >= 15) {
+                        initializeIMU(1e+6, 1e+8, true);
+                    } else if (imu_state == INITIALIZED && point_map->getNumKeyFrames() >= 30) {
+                        initializeIMU(1e+8, 1e+10, false);
                     }
 
                     KeyFrameCulling();
 
-                    if (imu_state == INITIALIZED && current_kf->timestamp - last_inertial_time > 3.0) {
+                    if (imu_state == INITIALIZED_AGAIN && current_kf->timestamp - last_inertial_time > 3.0) {
                         gravityRefinement();
                     }
 
                 }
-
-                mapper_logger << "\n";
-                mapper_logger.recordIter();
-                mapper_logger << "\n";
-                mapper_logger.flush();
             }
 
             resetIfRequested();
@@ -86,7 +74,6 @@ namespace mono_orb_slam3 {
     }
 
     void LocalMapping::processNewKeyFrame() {
-        mapper_logger << "processNewKeyFrame\n";
         current_kf->computeBow();
 
         // associate map-points to new keyframe and update normal and descriptor
@@ -106,16 +93,10 @@ namespace mono_orb_slam3 {
 
         // update links in the covisible graph
         current_kf->updateConnections();
-
-        mapper_logger << titles[0] << "keyframe(id " << current_kf->id << "), frame id " << current_kf->frame_id
-                      << "\n";
-        mapper_logger << titles[0] << " - velo: " << current_kf->getVelocity() << "\n";
-
         point_map->addKeyFrame(current_kf);
     }
 
     void LocalMapping::MapPointCulling() {
-        mapper_logger << "MapPointCulling\n";
         auto iter = recent_map_points.begin();
         const unsigned int curKFId = current_kf->id;
 
@@ -138,13 +119,9 @@ namespace mono_orb_slam3 {
             } else
                 iter++;
         }
-
-        mapper_logger << titles[0] << "delete " << numBad << " bad map-points, " << numFoundRatio
-                      << " found not enough\n";
     }
 
     void LocalMapping::createNewMapPoints() {
-        mapper_logger << "createNewMapPoints: triangulate with 20 recent keyframes\n";
         vector<shared_ptr<KeyFrame>> recentKFs = point_map->getRecentKeyFrames(21);
         recentKFs.pop_back();
 
@@ -166,7 +143,6 @@ namespace mono_orb_slam3 {
 
             vector<int> matches12;
             int numMatch = matcher.SearchForTriangulation(kf, current_kf, matches12);
-            mapper_logger << titles[0] << "search " << numMatch << " in keyframe (id " << kf->id << "), ";
 
             // projection matrix
             Eigen::Matrix<float, 3, 4> P1, P2;
@@ -174,8 +150,6 @@ namespace mono_orb_slam3 {
             P2.block<3, 3>(0, 0) = T2w.R, P2.block<3, 1>(0, 3) = T2w.t;
 
             int numGood = 0;
-
-            int triangulateFail = 0, illegalPoint = 0, smallParallax = 0, negativePoint = 0, errorPoint = 0, scale_inconsistent = 0;
             for (unsigned int i = 0, end = matches12.size(); i < end; ++i) {
                 if (matches12[i] == -1) continue;
                 const cv::KeyPoint &kp1 = kf->key_points[i];
@@ -185,7 +159,6 @@ namespace mono_orb_slam3 {
                 Eigen::Vector3f Pw;
                 if (TwoViewReconstruction::Triangulate(x1, x2, P1, P2, Pw)) {
                     if (!isfinite(Pw[0]) || !isfinite(Pw[1]) || !isfinite(Pw[2])) {
-                        illegalPoint++;
                         continue;
                     }
 
@@ -199,14 +172,12 @@ namespace mono_orb_slam3 {
 
                     const float cosParallax = n1.dot(n2);
                     if (cosParallax > 0.99998) {
-                        smallParallax++;
                         continue;
                     }
 
                     // check re-projection error in first keyframe
                     Eigen::Vector3f Pc1 = T1w.R * Pw + T1w.t;
                     if (Pc1[2] <= 0) {
-                        negativePoint++;
                         continue;
                     }
                     cv::Point2f project_p1 = camera_ptr->project(Pc1);
@@ -214,14 +185,12 @@ namespace mono_orb_slam3 {
                                                (project_p1.y - kp1.pt.y) * (project_p1.y - kp1.pt.y);
                     const float levelSquareSigma1 = squareSigmas[kp1.octave];
                     if (squareError1 > levelSquareSigma1 * 5.991) {
-                        errorPoint++;
                         continue;
                     }
 
                     // check re-projection error in second keyframe
                     Eigen::Vector3f Pc2 = T2w.R * Pw + T2w.t;
                     if (Pc2[2] <= 0) {
-                        negativePoint++;
                         continue;
                     }
                     cv::Point2f project_p2 = camera_ptr->project(Pc2);
@@ -229,14 +198,12 @@ namespace mono_orb_slam3 {
                                                (project_p2.y - kp2.pt.y) * (project_p2.y - kp2.pt.y);
                     const float levelSquareSigma2 = squareSigmas[kp2.octave];
                     if (squareError2 > levelSquareSigma2 * 5.991) {
-                        errorPoint++;
                         continue;
                     }
 
                     const float distRatio = dist1 / dist2;
                     const float levelRatio = sqrtf(levelSquareSigma2) / sqrtf(levelSquareSigma1);
                     if (distRatio * ratioFactor < levelRatio || distRatio > levelRatio * ratioFactor) {
-                        scale_inconsistent++;
                         continue;
                     }
 
@@ -248,18 +215,12 @@ namespace mono_orb_slam3 {
                     recent_map_points.push_back(mp);
 
                     numGood++;
-                } else
-                    triangulateFail++;
+                }
             }
-
-            mapper_logger << "triangulate " << numGood << ", " << smallParallax << " parallax small, " << negativePoint
-                          << " negative, " << illegalPoint << " illegal, " << errorPoint << " error, "
-                          << scale_inconsistent << " scale inconsistent, " << triangulateFail << " triangulate fail\n";
         }
     }
 
     void LocalMapping::searchInNeighbors() {
-        mapper_logger << "searchInNeighbors: project new map-points to neighbored keyframes\n";
         vector<shared_ptr<KeyFrame>> neighKFs = current_kf->getBestCovisibleKFs(20);
         vector<shared_ptr<KeyFrame>> targetKFs;
         for (const auto &kf: neighKFs) {
@@ -280,7 +241,6 @@ namespace mono_orb_slam3 {
         vector<shared_ptr<MapPoint>> curMapPoints = current_kf->getMapPoints();
         for (const auto &kf: targetKFs) {
             int numMatch = ORBMatcher::SearchByProjection(kf, curMapPoints, point_map);
-            mapper_logger << titles[1] << "keyframe (id " << kf->id << ") match " << numMatch << " map points\n";
         }
 
         // search matches by projection from other local keyframe to current_kf
@@ -316,9 +276,6 @@ namespace mono_orb_slam3 {
     }
 
     void LocalMapping::KeyFrameCulling() {
-        mapper_logger << "KeyFrameCulling\n";
-        mapper_logger.flush();
-
         // check redundant keyframes (only local keyframes)
         // a keyframe is considered redundant if it's 90% map-points are seen in at least other 3 keyframes (in the same or finer scale)
         vector<shared_ptr<KeyFrame>> recentKeyFrames = point_map->getRecentKeyFrames(25);
@@ -327,7 +284,7 @@ namespace mono_orb_slam3 {
         size_t last_kf_idx = 0;
         for (size_t idx = 1; idx < numKF - 1; ++idx) {
             if (recentKeyFrames[idx]->id == 0 ||
-                recentKeyFrames[idx + 1]->timestamp - recentKeyFrames[last_kf_idx]->timestamp > 1.5)
+                recentKeyFrames[idx + 1]->timestamp - recentKeyFrames[last_kf_idx]->timestamp > 2)
                 continue;
 
             auto &kf = recentKeyFrames[idx];
@@ -363,8 +320,6 @@ namespace mono_orb_slam3 {
 
             if (numRedundantObs > 0.9 * numMP) {
                 kf->setBad();
-                mapper_logger << titles[0] << "keyframe (id " << kf->id << ") has set bad\n";
-                mapper_logger.flush();
             } else {
                 last_kf_idx = idx;
             }
@@ -372,10 +327,6 @@ namespace mono_orb_slam3 {
     }
 
     void LocalMapping::initializeIMU(float prioriG, float prioriA, bool beFirst) {
-        mapper_logger << "InitializeIMU\n";
-        mapper_logger << titles[0] << "prioriG: " << prioriG << ", prioriA: " << prioriA << ", beFirst: " << beFirst
-                      << "\n";
-
         vector<shared_ptr<KeyFrame>> keyFrames = point_map->getAllKeyFrames();
 
         imu_initializing = true;
@@ -410,30 +361,9 @@ namespace mono_orb_slam3 {
         }
 
         double scale = 1.0;
-        Eigen::Matrix3f Rwg_f = Rwg.cast<float>();
-        mapper_logger << titles[0] << " - priori Rwg: " << Rwg_f << "\n";
-        mapper_logger << titles[0] << " - priori scale: " << scale << "\n";
-        mapper_logger.flush();
-
-        mapper_logger << titles[0] << "BEFORE INERTIAL OPTIMIZE\n";
-        for (const auto &kf: keyFrames) {
-            mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
-            mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
-            mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
-            mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
-        }
-        mapper_logger.flush();
-
         Optimize::inertialOptimize(point_map, Rwg, scale, prioriG, prioriA, beFirst);
 
-        Rwg_f = Rwg.cast<float>();
-        mapper_logger << titles[0] << "after optimize: \n";
-        mapper_logger << titles[0] << " - posteriori Rwg: " << Rwg_f << "\n";
-        mapper_logger << titles[0] << " - posteriori scale: " << scale << "\n";
-        mapper_logger.flush();
-
         if (scale < 1e-1) {
-            mapper_logger << titles[0] << "scale too small\n";
             imu_initializing = false;
             return;
         }
@@ -447,20 +377,13 @@ namespace mono_orb_slam3 {
 
         if (imu_state == NOT_INITIALIZE) {
             imu_state = INITIALIZED;
+        } else if (imu_state == INITIALIZED) {
+            imu_state = INITIALIZED_AGAIN;
         }
-
-        mapper_logger << titles[0] << "after changing map\n";
-        for (const auto &kf: keyFrames) {
-            mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
-            mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
-            mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
-            mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
-        }
-        mapper_logger.flush();
 
         // full inertial BA
-        mapper_logger << titles[0] << "fullInertialOptimize\n";
-        Optimize::fullInertialOptimize(point_map, 100, beFirst, false, prioriG, prioriA);
+        if (beFirst)
+            Optimize::fullInertialOptimize(point_map, 100, beFirst, false, prioriG, prioriA);
 
         // process keyframes in the queue
         while (getNewKeyFrame()) {
@@ -468,37 +391,21 @@ namespace mono_orb_slam3 {
             keyFrames.push_back(current_kf);
         }
 
-        for (const auto &kf: keyFrames) {
-            mapper_logger << titles[1] << "keyframe id " << kf->id << ", frame_id " << kf->frame_id << "\n";
-            mapper_logger << titles[1] << " - pose: " << kf->getPose() << "\n";
-            mapper_logger << titles[1] << " - velo: " << kf->getVelocity() << "\n";
-            mapper_logger << titles[1] << " - bias: " << kf->pre_integrator->updated_bias << "\n";
-        }
-        mapper_logger.flush();
-
         imu_initializing = false;
         point_map->increaseChangeIdx();
         last_inertial_time = current_kf->timestamp;
     }
 
     void LocalMapping::gravityRefinement() {
-        mapper_logger << "gravityRefinement\n";
-
         Eigen::Matrix3d Rwg = Eigen::Matrix3d::Identity();
-        Eigen::Matrix3f Rwg_f = Rwg.cast<float>();
-        mapper_logger << titles[0] << " - priori Rwg: " << Rwg_f << "\n";
 
         Optimize::gravityOptimize(point_map, Rwg);
-
         {
             // changing the map
             lock_guard<mutex> lock(point_map->map_update_mutex);
             point_map->applyScaleRotation(Rwg.cast<float>(), 1, false);
             tracker->updateFrameIMU();
         }
-
-        Rwg_f = Rwg.cast<float>();
-        mapper_logger << titles[0] << " - posteriori Rwg: " << Rwg_f << "\n";
 
         imu_state = FINISH;
     }

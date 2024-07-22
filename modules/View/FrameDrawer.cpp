@@ -73,13 +73,12 @@ namespace mono_orb_slam3 {
                 break;
         }
 
-        cv::Mat imgWithInfo;
-        DrawTextInfo(drawImg, trackingState, imgWithInfo);
+        DrawTextInfo(drawImg, trackingState);
 
-        return imgWithInfo;
+        return drawImg;
     }
 
-    void FrameDrawer::DrawTextInfo(cv::Mat &image, int curState, cv::Mat &imgText) const {
+    void FrameDrawer::DrawTextInfo(cv::Mat &image, int curState) const {
         stringstream ss;
         switch (curState) {
             case Tracking::NOT_INITIALIZE: {
@@ -101,10 +100,8 @@ namespace mono_orb_slam3 {
         int baseline = 0;
         cv::Size textSize = cv::getTextSize(ss.str(), cv::FONT_HERSHEY_PLAIN, 1, 1, &baseline);
 
-        imgText = cv::Mat(image.rows + textSize.height + 10, image.cols, image.type());
-        image.copyTo(imgText.rowRange(0, image.rows).colRange(0, image.cols));
-        imgText.rowRange(image.rows, imgText.rows) = cv::Mat::zeros(textSize.height + 10, image.cols, image.type());
-        cv::putText(imgText, ss.str(), cv::Point(5, imgText.rows - 5), cv::FONT_HERSHEY_PLAIN, 1,
+        image.rowRange(image.rows - textSize.height - 10, image.rows) = cv::Mat::zeros(textSize.height + 10, image.cols, image.type());
+        cv::putText(image, ss.str(), cv::Point(5, image.rows - 5), cv::FONT_HERSHEY_PLAIN, 1,
                     cv::Scalar(255, 255, 255), 1, 8);
     }
 

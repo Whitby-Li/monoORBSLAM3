@@ -5,7 +5,6 @@
 #include "ORBMatcher.h"
 #include "Sensor/Camera.h"
 #include "Utils/LieAlgeBra.h"
-#include "Log/Logger.h"
 
 using namespace std;
 
@@ -407,9 +406,6 @@ namespace mono_orb_slam3 {
                 numMatch++;
             } else fail2++;
         }
-
-        tracker_logger << titles[0] << "out view and bad " << numOutViewAndBad << ", fail1 " << fail1 << ", fail2 "
-                       << fail2 << "\n";
 
         return numMatch;
     }

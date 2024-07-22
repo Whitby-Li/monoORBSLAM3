@@ -17,7 +17,8 @@ namespace mono_orb_slam3 {
         enum ImuState {
                 NOT_INITIALIZE = 0,
                 INITIALIZED = 1,
-                FINISH = 2
+                INITIALIZED_AGAIN = 2,
+                FINISH = 3
         };
 
         explicit LocalMapping(Map *pointMap) : point_map(pointMap) {};

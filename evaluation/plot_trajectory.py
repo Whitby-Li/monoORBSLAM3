@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-path = '/datasets/ntu_viral/eee_01/truth_pos.txt'
+# path = '../results/tum_magistrale6/trajectory.txt'
+path = '/datasets/tum/corridor3/ground_truth.txt'
 
 if __name__ == '__main__':
     trajectory = np.loadtxt(path, dtype=float)

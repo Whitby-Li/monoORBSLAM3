@@ -11,13 +11,14 @@
 #include <iostream>
 #include <iomanip>
 #include <utility>
+#include <filesystem>
 
 using namespace std;
 
 namespace mono_orb_slam3 {
 
-    System::System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer) : be_reset(
-            false) {
+    System::System(const std::string &settingYaml, const std::string &vocabularyFile, bool useViewer, bool recordViewer)
+            : be_reset(false) {
         cv::FileStorage fs(settingYaml, cv::FileStorage::READ);
         if (!fs.isOpened()) {
             cout << "fail to load " << settingYaml << endl;
@@ -62,7 +63,7 @@ namespace mono_orb_slam3 {
             frame_drawer = new FrameDrawer(camera_ptr->width, camera_ptr->height);
             map_drawer = new MapDrawer(point_map, viewNode);
 
-            viewer = new Viewer(this, frame_drawer, map_drawer, fs["Camera"], viewNode);
+            viewer = new Viewer(this, frame_drawer, map_drawer, viewNode, recordViewer);
             viewing = new thread(&Viewer::Run, viewer);
             tracker->setViewer(viewer);
         }
@@ -90,6 +91,10 @@ namespace mono_orb_slam3 {
             if (be_reset) {
                 tracker->reset();
                 be_reset = false;
+
+                if (trajectory_out.is_open()) trajectory_out.close();
+                trajectory_out.open(save_folder + "/trajectory.txt");
+                trajectory_out << setiosflags(ios::fixed) << setprecision(6);
             }
         }
 
@@ -97,6 +102,20 @@ namespace mono_orb_slam3 {
         {
             lock_guard<mutex> lock(state_mutex);
             tracking_state = tracker->state;
+        }
+
+        // recorder trajectory
+        if (local_mapper->finishImuInit() && tracker->current_frame) {
+            auto curFrame = tracker->current_frame;
+            const Pose Twb = curFrame->T_wb;
+            const Eigen::Vector3f twb = Twb.t;
+            const Eigen::Quaternionf q(Twb.R.transpose());
+            const Eigen::Vector3f velo = curFrame->v_w;
+
+            trajectory_out << timeStamp << " " << twb.x() << " " << twb.y() << " " << twb.z()
+                           << " " << q.w() << " " << q.x() << " " << q.y() << " " << q.z()
+                           << " " << velo.x() << " " << velo.y() << " " << velo.z() << endl;
+            trajectory_out.flush();
         }
     }
 
@@ -106,6 +125,9 @@ namespace mono_orb_slam3 {
     }
 
     void System::ShutDown() {
+        // save frame trajectory
+        if (trajectory_out.is_open()) trajectory_out.close();
+
         local_mapper->requestFinish();
 
         if (viewer != nullptr) {
@@ -122,7 +144,8 @@ namespace mono_orb_slam3 {
             pangolin::BindToContext("mono-orb-slam3: map viewer");
     }
 
-    void System::saveKeyFrameTrajectory(const std::string &fileName) {
+    void System::saveKeyFrameTrajectory() {
+        const string fileName = save_folder + "/kf_trajectory.txt";
         cout << endl << "saving keyframe trajectory to " << fileName << "..." << endl;
 
         vector<shared_ptr<KeyFrame>> keyFrames = point_map->getAllKeyFrames();
@@ -132,39 +155,24 @@ namespace mono_orb_slam3 {
         ofstream outFile(fileName);
         outFile << setiosflags(ios::fixed) << setprecision(6);
         for (const auto &kf: keyFrames) {
-            const Pose Tcw = kf->getPose();
-            const Eigen::Vector3f twc = kf->getCameraCenter();
-            const Eigen::Quaternionf q(Tcw.R.transpose());
+            const Pose Twb = kf->getImuPose();
+            const Eigen::Vector3f twb = Twb.t;
+            const Eigen::Quaternionf q(Twb.R.transpose());
+            const Eigen::Vector3f velo = kf->getVelocity();
+            const Bias &bias = kf->pre_integrator->updated_bias;
 
-            outFile << kf->timestamp << " " << twc.x() << " " << twc.y() << " " << twc.z()
-                    << " " << q.w() << " " << q.x() << " " << q.y() << " " << q.z() << endl;
+            outFile << kf->timestamp << " " << twb.x() << " " << twb.y() << " " << twb.z()
+                    << " " << q.w() << " " << q.x() << " " << q.y() << " " << q.z()
+                    << " " << velo.x() << " " << velo.y() << " " << velo.z() << " "
+                    << bias.bg.x() << " " << bias.bg.y() << " " << bias.bg.z() << " "
+                    << bias.ba.x() << " " << bias.ba.y() << " " << bias.ba.z() << endl;
         }
         outFile.close();
         cout << "trajectory saved!" << endl;
     }
 
-    void System::saveKeyFrameVelocityAndBias(const std::string &fileName) {
-        cout << endl << "saving keyframe velocity to " << fileName << "...";
-
-        vector<shared_ptr<KeyFrame>> keyFrames = point_map->getAllKeyFrames();
-        sort(keyFrames.begin(), keyFrames.end(),
-             [](const shared_ptr<KeyFrame> &kf1, const shared_ptr<KeyFrame> &kf2) { return kf1->id < kf2->id; });
-
-        ofstream outFile(fileName);
-        outFile << setiosflags(ios::fixed) << setprecision(6);
-        for (const auto &kf: keyFrames) {
-            const Eigen::Vector3f velo = kf->getVelocity();
-            const Bias &bias = kf->pre_integrator->updated_bias;
-
-            outFile << kf->timestamp << " " << velo.x() << " " << velo.y() << " " << velo.z() << " "
-                    << bias.bg.x() << " " << bias.bg.y() << " " << bias.bg.z() << " "
-                    << bias.ba.x() << " " << bias.ba.y() << " " << bias.ba.z() << endl;
-        }
-        outFile.close();
-        cout << "velocity saved!" << endl;
-    }
-
-    void System::savePointCloudMap(const std::string &fileName) {
+    void System::savePointCloudMap() {
+        const string fileName = save_folder + "/map.pcd";
         cout << endl << "save point cloud map to " << fileName << " ... ";
 
         vector<shared_ptr<MapPoint>> mapPoints = point_map->getAllMapPoints();
@@ -185,7 +193,7 @@ namespace mono_orb_slam3 {
         fout << "POINTS " << nPoints << std::endl;
         fout << "DATA ascii" << std::endl;
 
-        for (const auto &mp : mapPoints) {
+        for (const auto &mp: mapPoints) {
             const Eigen::Vector3f &pos = mp->getPos();
             fout << pos.x() << " " << pos.y() << " " << pos.z() << endl;
         }
@@ -193,14 +201,15 @@ namespace mono_orb_slam3 {
         fout.close();
     }
 
-    void System::saveKeyFrameDepth(const std::string &fileName) {
+    void System::saveKeyFrameDepth() {
+        const string fileName = save_folder + "/kf_depth.txt";
         cout << endl << "save keyframe's depth to " << fileName << " ... ";
 
         vector<shared_ptr<KeyFrame>> keyFrames = point_map->getAllKeyFrames();
         ofstream fout(fileName);
         fout << fixed << setprecision(2);
 
-        for (const auto &kf : keyFrames) {
+        for (const auto &kf: keyFrames) {
             const Pose &Tcw = kf->getPose();
             const vector<cv::KeyPoint> &keyPoints = kf->raw_key_points;
             const vector<shared_ptr<MapPoint>> &mapPoints = kf->getMapPoints();
@@ -224,6 +233,18 @@ namespace mono_orb_slam3 {
     int System::getTrackingState() {
         lock_guard<mutex> lock(state_mutex);
         return tracking_state;
+    }
+
+    void System::setSaveFolder(const std::string &path) {
+        if (!filesystem::exists(path)) {
+            cout << "create save folder: " << path << endl;
+            filesystem::create_directories(path);
+        }
+        save_folder = path;
+
+        if (trajectory_out.is_open()) trajectory_out.close();
+        trajectory_out.open(save_folder + "/trajectory.txt");
+        trajectory_out << setiosflags(ios::fixed) << setprecision(6);
     }
 
 } // mono_orb_slam3

@@ -131,29 +131,23 @@ namespace mono_orb_slam3 {
 
         if (drawGraph) {
             glLineWidth(graph_line_width);
-            glColor4f(0.0f, 1.0f, 0.0f, 0.6f);
+            glColor4f(1.0f, 0.0f, 0.0f, 0.3f);
             glBegin(GL_LINES);
 
+            Eigen::Vector3f last_Ow;
+            bool haveLast = false;
             for (const auto &kf: keyFrames) {
                 // covisibility graph
-                const vector<shared_ptr<KeyFrame>> neighKFs = kf->getBestCovisibleKFs(10);
+                const vector<shared_ptr<KeyFrame>> neighKFs = kf->getBestCovisibleKFs(5);
                 Eigen::Vector3f Ow = kf->getCameraCenter();
-                if (!neighKFs.empty()) {
-                    for (const auto &neigh_kf: neighKFs) {
-                        if (neigh_kf->id < kf->id) continue;
-                        Eigen::Vector3f O2 = neigh_kf->getCameraCenter();
-                        glVertex3f(Ow[0], Ow[1], Ow[2]);
-                        glVertex3f(O2[0], O2[1], O2[2]);
-                    }
+
+                if (haveLast) {
+                    glVertex3f(last_Ow[0], last_Ow[1], last_Ow[2]);
+                    glVertex3f(Ow[0], Ow[1], Ow[2]);
                 }
 
-                // spanning tree
-                shared_ptr<KeyFrame> parent = kf->getParent();
-                if (parent) {
-                    Eigen::Vector3f Op = parent->getCameraCenter();
-                    glVertex3f(Ow[0], Ow[1], Ow[2]);
-                    glVertex3f(Op[0], Op[1], Op[2]);
-                }
+                haveLast = true;
+                last_Ow = Ow;
             }
 
             glEnd();

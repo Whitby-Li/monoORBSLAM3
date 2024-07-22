@@ -3,36 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def associate(truth_data, test_data, max_differ):
-    """
-    associate truth data and test data by their timestamp
-    :param truth_data: [[timestamp, ...]]
-    :param test_data: [[timestamp, ...]]
-    :param max_differ: maximum difference time
-    :return: matched truth data and test data
-    """
-    match_truth, match_test = [], []
-    len_truth, len_test = len(truth_data), len(test_data)
-    idx1, idx2 = 0, 0
-
-    while idx2 < len_test and truth_data[idx1][0] > test_data[idx2][0]:
-        idx2 += 1
-
-    while idx2 < len_test:
-        while idx1 < len_truth and abs(test_data[idx2][0] - truth_data[idx1][0]) > max_differ:
-            idx1 += 1
-
-        if idx1 < len_truth:
-            match_truth.append(truth_data[idx1]), match_test.append(test_data[idx2])
-
-        idx2 += 1
-
-    match_truth = np.array(match_truth, dtype=float)
-    match_test = np.array(match_test, dtype=float)
-
-    return match_truth, match_test
-
-
 def kitti_associate(truth_data, test_data, max_differ, time_len):
     match_truth, match_test = [], []
     len_truth, len_test = len(truth_data), len(test_data)
@@ -66,36 +36,6 @@ def kitti_associate(truth_data, test_data, max_differ, time_len):
     init_match_test = np.array(init_match_test, dtype=float)
 
     return init_match_truth, init_match_test, match_truth, match_test
-
-
-def align_mono(model, data):
-    """Align two trajectories using the method of Horn(closed-from)."""
-    np.set_printoptions(precision=3, suppress=True)
-    model_centered = model - model.mean(1)
-    data_centered = data - data.mean(1)
-
-    W = np.zeros((3, 3), dtype=float)
-    for column in range(model.shape[1]):
-        W += np.outer(model_centered[:, column], data_centered[:, column])
-
-    U, d, Vh = np.linalg.linalg.svd(W.transpose())
-    S = np.matrix(np.identity(3))
-    if np.linalg.det(U) * np.linalg.det(Vh) < 0:
-        S[2, 2] = -1
-
-    rot = U * S * Vh
-
-    rot_model = rot * model_centered
-    dots, norms = 0, 0
-    for column in range(data_centered.shape[1]):
-        dots += np.dot(data_centered[:, column].transpose(), rot_model[:, column])
-        normi = np.linalg.norm(model_centered[:, column])
-        norms += normi * normi
-
-    s = float(dots / norms)
-    trans = data.mean(1) - s * rot * model.mean(1)
-
-    return rot, s, trans
 
 
 def align(model, data):
@@ -168,13 +108,6 @@ if __name__ == '__main__':
     print(args.first_file)
     print("load %d truth trajectory data, %d test trajectory data" %(len(truth_trajectory), len(test_trajectory)))
 
-    # set first position as origin
-    origin_x, origin_y, origin_z = test_trajectory[0][1], test_trajectory[0][2], test_trajectory[0][3]
-    for i in range(len(test_trajectory)):
-        test_trajectory[i][1] -= origin_x
-        test_trajectory[i][2] -= origin_y
-        test_trajectory[i][3] -= origin_z
-
     # 2. match two trajectories by timestamp
     init_match_truth_trajectory, init_match_test_trajectory, match_truth_trajectory, match_test_trajectory = kitti_associate(truth_trajectory, test_trajectory, float(args.max_differ), 30)
 
@@ -186,35 +119,10 @@ if __name__ == '__main__':
     # 3. align two init trajectories, compute init error
     truth_xyz = np.matrix(match_truth_trajectory[:, 1:4]).transpose()
     test_xyz = np.matrix(match_test_trajectory[:, 1:4]).transpose()
-    init_truth_xyz = np.matrix(init_match_truth_trajectory[:, 1:4]).transpose()
-    init_test_xyz = np.matrix(init_match_test_trajectory[:, 1:4]).transpose()
-
-    init_rotation, init_translation_gt, init_translation_error_gt, init_translation, init_translation_error, init_scale = align(init_test_xyz, init_truth_xyz)
-
-    print("init scale error: ", init_scale)
-    print("init absolute translation error with scale: ",
-          np.sqrt(np.dot(init_translation_error_gt, init_translation_error_gt) / len(init_translation_error_gt)))
 
     # 4. align two full trajectories, compute full error
     rotation, translation_gt, translation_error_gt, translation, translation_error, scale = align(test_xyz, truth_xyz)
 
-    align_test_xyz = init_scale * rotation * test_xyz + init_translation_gt
-    full_align_error = truth_xyz - align_test_xyz
-    full_translation_error = np.sqrt(np.sum(np.multiply(full_align_error, full_align_error), 0)).A[0]
-    print("absolute translation error: ", np.sqrt(np.dot(full_translation_error, full_translation_error)/ len(full_translation_error)))
-
-    test_xyz_full = np.matrix(test_trajectory[:, 1:4]).transpose()
-    test_xyz_full_aligned = init_scale * rotation * test_xyz_full + init_translation_gt
-
-    align_data_list = []
-    for i in range(len(test_trajectory)):
-        data = []
-        data.append(test_trajectory[i][0])
-        data.append(test_xyz_full_aligned[0, i])
-        data.append(test_xyz_full_aligned[1, i])
-        data.append(test_xyz_full_aligned[2, i])
-        align_data_list.append(data)
-
-    np.savetxt(args.save_folder + "/align_trajectory.txt", align_data_list, fmt="%.6f %.6f %.6f %.6f")
-
+    print("scale error: ", scale)
+    print("absolute translation error: ", np.sqrt(np.dot(translation_error_gt, translation_error_gt)/ len(translation_error_gt)))
     print()
