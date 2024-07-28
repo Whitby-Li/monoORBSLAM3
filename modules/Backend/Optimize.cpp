@@ -224,6 +224,44 @@ namespace mono_orb_slam3 {
         Rwg = vGravityDir->estimate().R_wg;
     }
 
+    void Optimize::gravityScaleOptimize(Map *pointMap, Eigen::Matrix3f &Rwg, float &scale) {
+        int iteration = 30;
+        const vector<shared_ptr<KeyFrame>> keyFrames = pointMap->getAllKeyFrames();
+        const int numKF = (int) keyFrames.size();
+
+        // 1. setup optimizer
+        g2o::SparseOptimizer optimizer;
+        auto *solver = new g2o::OptimizationAlgorithmLevenberg(
+                g2o::make_unique<g2o::BlockSolver_6_3>(g2o::make_unique<LinearSolverEigen_6_3>())
+        );
+        optimizer.setAlgorithm(solver);
+
+        // 2. set vertex and edges
+        auto *vGravityDir = new VertexGravity(Rwg.cast<double>());
+        vGravityDir->setId(0);
+        optimizer.addVertex(vGravityDir);
+
+        auto *vScale = new VertexScale(scale);
+        vScale->setId(1);
+        optimizer.addVertex(vScale);
+
+        for (int i = 0; i < numKF - 1; ++i) {
+            auto *eGS = new EdgeGS(keyFrames[i], keyFrames[i + 1]);
+            eGS->setVertex(0, vGravityDir);
+            eGS->setVertex(1, vScale);
+            optimizer.addEdge(eGS);
+        }
+
+        // 3. optimize
+        optimizer.setVerbose(false);
+        optimizer.initializeOptimization();
+        optimizer.optimize(iteration);
+
+        // 4. recover
+        Rwg = vGravityDir->estimate().R_wg.cast<float>();
+        scale = vScale->estimate();
+    }
+
     void Optimize::fullInertialOptimize(Map *pointMap, int iteration, bool beInit, bool fixedMP, float prioriG,
                                         float prioriA) {
         const vector<shared_ptr<KeyFrame>> keyFrames = pointMap->getAllKeyFrames();

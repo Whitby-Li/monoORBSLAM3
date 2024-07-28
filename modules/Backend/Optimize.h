@@ -28,6 +28,8 @@ namespace mono_orb_slam3 {
 
         static void gravityOptimize(Map *pointMap, Eigen::Matrix3d &Rwg);
 
+        static void gravityScaleOptimize(Map *pointMap, Eigen::Matrix3f &Rwg, float &scale);
+
         static void fullInertialOptimize(Map *pointMap, int iteration, bool beInit, bool fixedMP, float prioriG, float prioriA);
 
         static int poseOptimize(const std::shared_ptr<Frame> &frame);

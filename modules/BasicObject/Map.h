@@ -46,7 +46,7 @@ namespace mono_orb_slam3 {
 
         std::set<std::shared_ptr<MapPoint>> getReferenceMapPoints();
 
-        void applyScaleRotation(const Eigen::Matrix3f& Rwg, float s);
+        void applyScaleRotation(const Eigen::Matrix3f& Rwg, float s, bool isLast = false);
 
         void increaseChangeIdx();
 

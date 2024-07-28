@@ -87,6 +87,8 @@ namespace mono_orb_slam3 {
 
         void gravityRefinement();
 
+        void gravityScaleRefinement();
+
         bool checkFinish();
 
         void setFinish();

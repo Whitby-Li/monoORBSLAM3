@@ -56,7 +56,7 @@ namespace mono_orb_slam3 {
                         initializeIMU(1e+6, 1e+8, false);
                     }
 
-                    if (imu_state > INITIALIZED) KeyFrameCulling();
+                    if (imu_state == FINISH) KeyFrameCulling();
 
                     if (imu_state == OPTIMIZED && current_kf->timestamp - last_inertial_time > 3.0) {
                         gravityRefinement();
@@ -605,6 +605,31 @@ namespace mono_orb_slam3 {
         Rwg_f = Rwg.cast<float>();
 #ifdef  DEBUG
         mapper_logger << titles[0] << " - posteriori Rwg: " << Rwg_f << "\n";
+#endif
+
+        imu_state = FINISH;
+    }
+
+    void LocalMapping::gravityScaleRefinement() {
+#ifdef DEBUG
+        mapper_logger << "gravityScaleRefinement\n";
+#endif
+
+        Eigen::Matrix3f Rwg = Eigen::Matrix3f::Identity();
+        float scale = 1;
+
+        Optimize::gravityScaleOptimize(point_map, Rwg, scale);
+
+        {
+            // changing the map
+            lock_guard<mutex> lock(point_map->map_update_mutex);
+            point_map->applyScaleRotation(Rwg.cast<float>(), scale, true);
+            tracker->updateFrameIMU();
+        }
+
+#ifdef  DEBUG
+        mapper_logger << titles[0] << " - posteriori Rwg: " << Rwg << "\n";
+        mapper_logger << titles[0] << " - posteriori scale: " << scale << "\n";
 #endif
 
         imu_state = FINISH;
