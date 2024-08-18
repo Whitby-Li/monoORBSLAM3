@@ -10,8 +10,6 @@
 #include <fstream>
 #include <mutex>
 
-#define DEBUG
-
 namespace mono_orb_slam3 {
     
     struct Pose;
