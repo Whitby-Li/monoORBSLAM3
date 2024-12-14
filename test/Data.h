@@ -13,35 +13,44 @@
 
 void loadCameraData(const std::string &path, std::vector<double> &timestamps) {
     std::ifstream fin(path);
-    while (!fin.eof()) {
-        std::string lineStr;
-        getline(fin, lineStr);
-        if (!lineStr.empty()) {
-            std::stringstream ss(lineStr);
-            double t;
-            ss >> t;
-            timestamps.push_back(t);
-        }
+    if (!fin.is_open()) {
+        std::cerr << "Could not open file " << path << std::endl;
+        return;
     }
+
+    std::string lineStr;
+    std::getline(fin, lineStr);
+    while (std::getline(fin, lineStr)) {
+        std::stringstream ss(lineStr);
+        std::string itemStr;
+        getline(ss, itemStr, ',');
+        timestamps.push_back(std::stod(itemStr));
+    }
+
     fin.close();
 }
 
 void loadImuData(const std::string &path, std::vector<mono_orb_slam3::ImuData> &vecImu) {
     std::ifstream fin(path);
+    if (!fin.is_open()) {
+        std::cerr << "Could not open file " << path << std::endl;
+        return;
+    }
+
     double last_t = 0;
-    while (!fin.eof()) {
-        std::string lineStr;
-        getline(fin, lineStr);
-        if (!lineStr.empty()) {
-            std::stringstream ss(lineStr);
-            double t;
-            ss >> t;
-            if (t > last_t) {
-                last_t = t;
-                float gx, gy, gz, ax, ay, az;
-                ss >> gx >> gy >> gz >> ax >> ay >> az;
-                vecImu.emplace_back(Eigen::Vector3f(gx, gy, gz), Eigen::Vector3f(ax, ay, az), t);
-            }
+    std::string lineStr;
+    std::getline(fin, lineStr);
+    while (std::getline(fin, lineStr)) {
+        std::stringstream ss(lineStr);
+        std::string itemStr;
+        std::vector<double> rowData;
+        while (std::getline(ss, itemStr, ',')) {
+            rowData.push_back(std::stod(itemStr));
+        }
+
+        if (rowData[0] > last_t) {
+            last_t = rowData[0];
+            vecImu.emplace_back(Eigen::Vector3f(rowData[1], rowData[2], rowData[3]), Eigen::Vector3f(rowData[4], rowData[5], rowData[6]), rowData[0]);
         }
     }
 

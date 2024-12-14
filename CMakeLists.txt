@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.16)
 project(mono_orb_slam3)
 
 if (NOT CMAKE_BUILD_TYPE)

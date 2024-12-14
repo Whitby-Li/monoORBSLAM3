@@ -23,17 +23,17 @@ int main(int argc, char *argv[]) {
     // 1. load data
     const string dataFolder = argv[3];
     vector<double> timestamps;
-    loadCameraData(dataFolder + "/cam0/times.txt", timestamps);
+    loadCameraData(dataFolder + "/cam0/time.csv", timestamps);
     int num_camera = (int) timestamps.size();
     cout << "load " << num_camera << " camera data" << endl;
 
     vector<ImuData> vecImu;
-    loadImuData(dataFolder + "/imu.txt", vecImu);
+    loadImuData(dataFolder + "/imu.csv", vecImu);
     int num_imu = (int) vecImu.size();
     cout << "load " << num_imu << " imu data" << endl;
 
     // 2. create SLAM system
-    System SLAM(argv[1], argv[2], false, false);
+    System SLAM(argv[1], argv[2], true, false);
     SLAM.setSaveFolder(argv[4]);
 
     // 3. main loop

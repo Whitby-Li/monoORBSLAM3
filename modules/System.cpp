@@ -94,8 +94,9 @@ namespace mono_orb_slam3 {
                 be_reset = false;
 
                 if (trajectory_out.is_open()) trajectory_out.close();
-                trajectory_out.open(save_folder + "/trajectory.txt");
+                trajectory_out.open(save_folder + "/trajectory.csv");
                 trajectory_out << setiosflags(ios::fixed) << setprecision(6);
+                trajectory_out << "timestamp, tx, ty, tz, qx, qy, qz, qw" << std::endl;
             }
         }
 
@@ -113,9 +114,9 @@ namespace mono_orb_slam3 {
             const Eigen::Quaternionf q(Twb.R.transpose());
             const Eigen::Vector3f velo = curFrame->v_w;
 
-            trajectory_out << timeStamp << " " << twb.x() << " " << twb.y() << " " << twb.z()
-                           << " " << q.w() << " " << q.x() << " " << q.y() << " " << q.z()
-                           << " " << velo.x() << " " << velo.y() << " " << velo.z() << endl;
+            trajectory_out << timeStamp << ", " << twb.x() << ", " << twb.y() << ", " << twb.z()
+                           << ", " << q.x() << ", " << q.y() << ", " << q.z() << ", " << q.w()
+                           << ", " << velo.x() << ", " << velo.y() << ", " << velo.z() << endl;
             trajectory_out.flush();
         }
     }
@@ -146,12 +147,13 @@ namespace mono_orb_slam3 {
     }
 
     void System::saveKeyFrameTrajectory() {
-        const string fileName = save_folder + "/kf_trajectory.txt";
+        const string fileName = save_folder + "/kf_trajectory.csv";
         cout << endl << "saving keyframe trajectory to " << fileName << "..." << endl;
 
         vector<shared_ptr<KeyFrame>> keyFrames = point_map->getAllKeyFrames();
         ofstream outFile(fileName);
         outFile << setiosflags(ios::fixed) << setprecision(6);
+        outFile << "timestamp, tx, ty, tz, qx, qy, qz, qw, vx, vy, vz, bgx, bgy, bgz, bax, bay, baz" << std::endl;
         for (const auto &kf: keyFrames) {
             const Pose Twb = kf->getImuPose();
             const Eigen::Vector3f twb = Twb.t;
@@ -159,11 +161,11 @@ namespace mono_orb_slam3 {
             const Eigen::Vector3f velo = kf->getVelocity();
             const Bias &bias = kf->pre_integrator->updated_bias;
 
-            outFile << kf->timestamp << " " << twb.x() << " " << twb.y() << " " << twb.z()
-                    << " " << q.w() << " " << q.x() << " " << q.y() << " " << q.z()
-                    << " " << velo.x() << " " << velo.y() << " " << velo.z() << " "
-                    << bias.bg.x() << " " << bias.bg.y() << " " << bias.bg.z() << " "
-                    << bias.ba.x() << " " << bias.ba.y() << " " << bias.ba.z() << endl;
+            outFile << kf->timestamp << ", " << twb.x() << ", " << twb.y() << ", " << twb.z()
+                    << ", " << q.x() << ", " << q.y() << ", " << q.z() << ", " << q.w()
+                    << ", " << velo.x() << ", " << velo.y() << ", " << velo.z() << ", "
+                    << bias.bg.x() << ", " << bias.bg.y() << ", " << bias.bg.z() << ", "
+                    << bias.ba.x() << ", " << bias.ba.y() << ", " << bias.ba.z() << endl;
         }
         outFile.close();
         cout << "keyframe trajectory saved!" << endl;
@@ -241,8 +243,9 @@ namespace mono_orb_slam3 {
         save_folder = path;
 
         if (trajectory_out.is_open()) trajectory_out.close();
-        trajectory_out.open(save_folder + "/trajectory.txt");
+        trajectory_out.open(save_folder + "/trajectory.csv");
         trajectory_out << setiosflags(ios::fixed) << setprecision(6);
+        trajectory_out << "timestamp, tx, ty, tz, qx, qy, qz, qw" << std::endl;
 
 #ifdef DEBUG
         string logFolder = path + "/logs";

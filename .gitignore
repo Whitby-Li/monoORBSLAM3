@@ -6,5 +6,5 @@
 /thirdParty/*/build
 /thirdParty/*/lib
 /vocabulary
-/.idea
+/.*
 /evaluation
