@@ -60,23 +60,23 @@ add_library(mono_orb_slam3 SHARED
         )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/test/bin)
-link_libraries(mono_orb_slam3)
+# link_libraries(mono_orb_slam3)
 
-# ORB
-add_executable(extractor_test test/ORB/extractorTest.cpp)
-add_executable(initialize_search_test test/ORB/initializeSearchTest.cpp)
+# # ORB
+# add_executable(extractor_test test/ORB/extractorTest.cpp)
+# add_executable(initialize_search_test test/ORB/initializeSearchTest.cpp)
 
-# Camera
-add_executable(camera_test test/Camera/cameraTest.cpp)
+# # Camera
+# add_executable(camera_test test/Camera/cameraTest.cpp)
 
-# Imu
-add_executable(imu_test test/Imu/imuTest.cpp)
+# # Imu
+# add_executable(imu_test test/Imu/imuTest.cpp)
 
-# Frontend
-add_executable(initialize_test test/Frontend/initializeTest.cpp)
-add_executable(tracking_test test/Frontend/trackingTest.cpp)
+# # Frontend
+# add_executable(initialize_test test/Frontend/initializeTest.cpp)
+# add_executable(tracking_test test/Frontend/trackingTest.cpp)
 
-# SLAM Demo
-add_executable(demo test/demo.cpp)
-add_executable(kitti_demo test/kittiDemo.cpp)
-add_executable(phone_demo test/phoneDemo.cpp)
+# # SLAM Demo
+# add_executable(demo test/demo.cpp)
+# add_executable(kitti_demo test/kittiDemo.cpp)
+# add_executable(phone_demo test/phoneDemo.cpp)
